@@ -1,18 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import Header from "@/components/(dashboard)/Header";
 import Sidebar from "@/components/(dashboard)/Sidebar";
-import { useDispatch } from "react-redux";
-import { setUser } from "@/lib/redux/authSlice";
-import { isAuthenticated, getUser, clearUserData } from "@/lib/auth";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const dispatch = useDispatch();
 
  
 

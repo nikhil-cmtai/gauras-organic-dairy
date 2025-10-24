@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { Users as UsersIcon, Package, ShoppingCart, Layers, Home as HomeIcon } from "lucide-react";
 import Chart from "@/components/ui/Chart";
-import { useSelector, useDispatch } from "react-redux";
-import { AppDispatch } from "@/lib/store";
-import { selectCount, fetchCountdata } from "@/lib/redux/countSlice";   
+import { useSelector } from "react-redux";
+import { selectCount } from "@/lib/redux/countSlice";   
 
 
 export default function Dashboard() {
-    const dispatch = useDispatch<AppDispatch>();
     const count = useSelector(selectCount);
 
 
