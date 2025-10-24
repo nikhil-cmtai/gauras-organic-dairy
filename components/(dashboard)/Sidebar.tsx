@@ -17,9 +17,9 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Home", href: "/dashboard/home", icon: Home },
-  { name: "Category", href: "/dashboard/category", icon: FileText },
+  { name: "Delivery Partners", href: "/dashboard/category", icon: FileText },
   { name: "Products", href: "/dashboard/products", icon: Contact },
-  { name: "Distributors", href: "/dashboard/distributors", icon: Users },
+  { name: "Subscriptions", href: "/dashboard/distributors", icon: Users },
   { name: "Orders", href: "/dashboard/orders", icon: User },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
   { name: "Logout", href: "/logout", icon: LogOut },
@@ -39,7 +39,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
       />
       
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 flex-col border-r bg-white 
+        fixed inset-y-0 left-0 z-50 w-72 flex-col border-r bg-white 
         transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}
         lg:translate-x-0 lg:flex lg:shadow-none
@@ -58,7 +58,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
             href="/"
             className="text-2xl font-extrabold tracking-tight text-slate-900"
           >
-            NLP
+            Gauras Organic Dairy
           </Link>
           <div className="h-1 w-3/4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
         </div>

@@ -4,10 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchDistributorOrders,
-  fetchWholesaleOrders,
-  updateOrder,
   updateDistributorOrder,
-  selectWholesaleOrders,
   selectDistributorOrders,
   selectLoading,
   selectError,
@@ -114,14 +111,12 @@ const groupOrdersById = (orders: Order[]) => {
 const OrdersPage = () => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const wholesaleOrders = useSelector(selectWholesaleOrders);
   const distributorOrders = useSelector(selectDistributorOrders);
   const loading = useSelector(selectLoading);
   const error = useSelector(selectError);
   const products = useSelector(selectProducts);
   const distributors = useSelector(selectDistributors);
 
-  const [tab, setTab] = useState<"distributor" | "wholesale">("distributor");
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [editModalData, setEditModalData] = useState<OrderEditData>({ status: '', quantity: 0, quantityDelievered: 0, quantityPending: 0 });
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -130,17 +125,8 @@ const OrdersPage = () => {
   useEffect(() => {
     dispatch(fetchProducts());
     dispatch(fetchDistributors());
+    dispatch(fetchDistributorOrders());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (tab === "distributor") {
-      dispatch(fetchDistributorOrders());
-    } else {
-      dispatch(fetchWholesaleOrders());
-    }
-    setEditOrder(null);
-    setEditModalData({ status: "", quantity: 0, quantityDelievered: 0, quantityPending: 0 });
-  }, [tab, dispatch]);
 
   const openEditModal = (order: Order) => {
     setEditOrder(order);
@@ -191,13 +177,8 @@ const OrdersPage = () => {
       };
     }
     
-    if (tab === 'distributor') {
-      await dispatch(updateDistributorOrder(editOrder.orders[0]?._id ?? '', payload));
-      dispatch(fetchDistributorOrders());
-    } else {
-      await dispatch(updateOrder(editOrder.orders[0]?._id ?? '', payload));
-      dispatch(fetchWholesaleOrders());
-    }
+    await dispatch(updateDistributorOrder(editOrder.orders[0]?._id ?? '', payload));
+    dispatch(fetchDistributorOrders());
     
     // Close modal immediately
     setEditOrder(null);
@@ -293,10 +274,7 @@ const OrdersPage = () => {
 
   return (
     <div className="w-full mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant={tab === "distributor" ? "default" : "outline"} onClick={() => setTab("distributor")}>Distributor Orders</Button>
-        <Button variant={tab === "wholesale" ? "default" : "outline"} onClick={() => setTab("wholesale")}>Wholesale Orders</Button>
-      </div>
+      <h1 className="text-2xl font-bold mb-6">Orders</h1>
       {error && <div className="text-red-500 mb-4">{error}</div>}
       <div className="bg-white rounded shadow p-4">
         {loading ? (
@@ -373,134 +351,71 @@ const OrdersPage = () => {
                 </form>
               </DialogContent>
             </Dialog>
-            {tab === "distributor" ? (
-              <Accordion type="multiple" className="w-full">
-                {distributorOrders && distributorOrders.length > 0 ? (
-                  Object.entries(groupOrdersById(distributorOrders)).map(([orderId, orders]) => (
-                    <AccordionItem key={orderId} value={orderId}>
-                      <AccordionTrigger>
-                        <span className="font-semibold">
-                          Order ID: {orderId}
-                          {orders[0]?.createdAt && (
-                            <> &nbsp;|&nbsp; <span className="font-normal text-sm text-gray-500">Date: {new Date(orders[0].createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></>
-                          )}
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <table className="w-full text-left mb-4">
-                          <thead>
-                            <tr>
-                              <th className="py-2">Product</th>
-                              <th className="py-2">Distributor</th>
-                              <th className="py-2">Quantity</th>
-                              <th className="py-2">Delivered</th>
-                              <th className="py-2">Pending</th>
-                              <th className="py-2">Status</th>
+            <Accordion type="multiple" className="w-full">
+              {distributorOrders && distributorOrders.length > 0 ? (
+                Object.entries(groupOrdersById(distributorOrders)).map(([orderId, orders]) => (
+                  <AccordionItem key={orderId} value={orderId}>
+                    <AccordionTrigger>
+                      <span className="font-semibold">
+                        Order ID: {orderId}
+                        {orders[0]?.createdAt && (
+                          <> &nbsp;|&nbsp; <span className="font-normal text-sm text-gray-500">Date: {new Date(orders[0].createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></>
+                        )}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <table className="w-full text-left mb-4">
+                        <thead>
+                          <tr>
+                            <th className="py-2">Product</th>
+                            <th className="py-2">Distributor</th>
+                            <th className="py-2">Quantity</th>
+                            <th className="py-2">Delivered</th>
+                            <th className="py-2">Pending</th>
+                            <th className="py-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orders[0].orders.map((product, idx) => (
+                            <tr key={product._id || idx}>
+                              <td className="py-2">{getProductName(product.productId || "")}</td>
+                              <td className="py-2">{getDistributorName(orders[0].distributorId || "")}</td>
+                              <td className="py-2">{product.quantity}</td>
+                              <td className="py-2">{product.status === 'partially completed'
+                                ? product.quantityDelievered ?? 0
+                                : product.status === 'complete'
+                                  ? product.quantity
+                                  : 0}</td>
+                              <td className="py-2">{product.status === 'partially completed'
+                                ? Math.max(0, product.quantityPending ?? 0)
+                                : product.status === 'pending' || product.status === ''
+                                  ? product.quantity
+                                  : 0}</td>
+                              <td className="py-2"><span className="capitalize">{product.status}</span></td>
+                              <td className="py-2 flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => openEditModal({
+                                  ...orders[0],
+                                  orders: [product]
+                                })}>
+                                  Edit
+                                </Button>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {orders[0].orders.map((product, idx) => (
-                              <tr key={product._id || idx}>
-                                <td className="py-2">{getProductName(product.productId || "")}</td>
-                                <td className="py-2">{getDistributorName(orders[0].distributorId || "")}</td>
-                                <td className="py-2">{product.quantity}</td>
-                                <td className="py-2">{product.status === 'partially completed'
-                                  ? product.quantityDelievered ?? 0
-                                  : product.status === 'complete'
-                                    ? product.quantity
-                                    : 0}</td>
-                                <td className="py-2">{product.status === 'partially completed'
-                                  ? Math.max(0, product.quantityPending ?? 0)
-                                  : product.status === 'pending' || product.status === ''
-                                    ? product.quantity
-                                    : 0}</td>
-                                <td className="py-2"><span className="capitalize">{product.status}</span></td>
-                                <td className="py-2 flex gap-2">
-                                  <Button size="sm" variant="outline" onClick={() => openEditModal({
-                                    ...orders[0],
-                                    orders: [product]
-                                  })}>
-                                    Edit
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <div className="flex gap-2 mt-2">
-                          <Button size="sm" variant="default" onClick={() => handleViewInvoice(orders[0])}>
-                            Invoice
-                          </Button>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">No orders found.</div>
-                )}
-              </Accordion>
-            ) : (
-              <Accordion type="multiple" className="w-full">
-                {wholesaleOrders && wholesaleOrders.length > 0 ? (
-                  Object.entries(groupOrdersById(wholesaleOrders)).map(([orderId, orders]) => (
-                    <AccordionItem key={orderId} value={orderId}>
-                      <AccordionTrigger>
-                        <span className="font-semibold">
-                          Order ID: {orderId}
-                          {orders[0]?.createdAt && (
-                            <> &nbsp;|&nbsp; <span className="font-normal text-sm text-gray-500">Date: {new Date(orders[0].createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></>
-                          )}
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <table className="w-full text-left mb-4">
-                          <thead>
-                            <tr>
-                              <th className="py-2">Product</th>
-                              <th className="py-2">Distributor</th>
-                              <th className="py-2">Quantity</th>
-                              <th className="py-2">Delivered</th>
-                              <th className="py-2">Pending</th>
-                              <th className="py-2">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {orders[0].orders.map((product, idx) => (
-                              <tr key={product._id || idx}>
-                                <td className="py-2">{getProductName(product.productId || "")}</td>
-                                <td className="py-2">{getDistributorName(orders[0].distributorId || "")}</td>
-                                <td className="py-2">{product.quantity}</td>
-                                <td className="py-2">{product.status === 'partially completed'
-                                  ? product.quantityDelievered ?? 0
-                                  : product.status === 'complete'
-                                    ? product.quantity
-                                    : 0}</td>
-                                <td className="py-2">{product.status === 'partially completed'
-                                  ? Math.max(0, product.quantityPending ?? 0)
-                                  : product.status === 'pending' || product.status === ''
-                                    ? product.quantity
-                                    : 0}</td>
-                                <td className="py-2"><span className="capitalize">{product.status}</span></td>
-                                <td className="py-2 flex gap-2">
-                                  <Button size="sm" variant="outline" onClick={() => openEditModal({
-                                    ...orders[0],
-                                    orders: [product]
-                                  })}>
-                                    Edit
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">No orders found.</div>
-                )}
-              </Accordion>
-            )}
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="default" onClick={() => handleViewInvoice(orders[0])}>
+                          Invoice
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">No orders found.</div>
+              )}
+            </Accordion>
           </>
         )}
       </div>

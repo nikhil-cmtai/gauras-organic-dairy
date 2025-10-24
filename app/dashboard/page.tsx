@@ -12,9 +12,6 @@ export default function Dashboard() {
     const dispatch = useDispatch<AppDispatch>();
     const count = useSelector(selectCount);
 
-    useEffect(() => {
-        dispatch(fetchCountdata());
-    }, [dispatch]);
 
 
     return (
