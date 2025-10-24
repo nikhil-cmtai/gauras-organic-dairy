@@ -4,7 +4,7 @@ export default function PrivacyPolicyPage() {
   return (
     <main className="max-w-2xl mx-auto py-16 px-4">
       <h1 className="text-3xl font-bold text-red-700 mb-6">Privacy Policy</h1>
-      <p className="mb-4 text-gray-700">Your privacy is important to us. This Privacy Policy explains how NLP Enterprises collects, uses, and protects your information when you use our website and mobile app.</p>
+      <p className="mb-4 text-gray-700">Your privacy is important to us. This Privacy Policy explains how Gauras Organic Dairy collects, uses, and protects your information when you use our website and mobile app.</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">Information We Collect</h2>
       <ul className="list-disc list-inside mb-4 text-gray-700">
         <li>Personal information (name, phone, address) provided during registration or order placement.</li>

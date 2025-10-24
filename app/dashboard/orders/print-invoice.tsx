@@ -468,10 +468,10 @@ const PrintInvoice = () => {
         
         <div className="flex justify-between mb-8">
           <div>
-            <div className="font-bold text-2xl">{userData?.name || "NLP ENTERPRISES"}</div>
+            <div className="font-bold text-2xl">{userData?.name || "Gauras Organic Dairy"}</div>
             <div>{userData?.state || "Jharkhand"}</div>
             <div>Phone: {userData?.phone || "1234567890"}</div>
-            <div>E-Mail: {userData?.email || "nlp.enterprises@gmail.com"}</div>
+            <div>E-Mail: {userData?.email || "gaurasorganicdairy@gmail.com"}</div>
             <div><span className="font-bold">GST No:</span> {userData?.gstNumber || "20AABCU9603R1Z2"}</div>
           </div>
           <div className="text-right">
@@ -663,7 +663,7 @@ const PrintInvoice = () => {
         <div className="border border-amber-200 mb-2">
           <div className="font-bold bg-gray-100 border-b border-amber-200 p-2">Bank Account Details</div>
           <div className="p-2">
-            <div><span className="font-semibold">Beneficiary Name :</span> {userData?.accountHolderName || userData?.name || 'NLP ENTERPRISES'}</div>
+            <div><span className="font-semibold">Beneficiary Name :</span> {userData?.accountHolderName || userData?.name || 'Gauras Organic Dairy'}</div>
             <div><span className="font-semibold">Account Number :</span> {userData?.bankAccountNumber || 'XXXXXXXXXXXX'}</div>
             <div><span className="font-semibold">IFSC CODE :</span> {userData?.bankIfsc || 'ICIC0000433'}</div>
             <div><span className="font-semibold">Bank :</span> {userData?.bankName || 'ICICI'}{userData?.bankAddress ? `, Branch : ${userData.bankAddress}` : ''}</div>
@@ -681,7 +681,7 @@ const PrintInvoice = () => {
         </div>
         
         <div className="mt-10 text-right">
-          <div>{userData?.name || "NLP"}</div>
+          <div>{userData?.name || "Gauras Organic Dairy"}</div>
           {userData?.signature && (
             <div className="mt-2 mb-2">
               <Image 
