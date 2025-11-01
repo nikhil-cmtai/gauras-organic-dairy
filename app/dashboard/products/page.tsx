@@ -11,11 +11,6 @@ import {
   selectLoading as selectProductLoading,
   selectError as selectProductError,
 } from "@/lib/redux/productSlice";
-import {
-  fetchCategories,
-  selectCategory,
-  selectLoading as selectCategoryLoading,
-} from "@/lib/redux/categorySlice";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,52 +28,43 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import type { Category } from "@/lib/redux/categorySlice";
+import type { Product } from "@/lib/redux/productSlice";
 
-type ImageObject = {
-  url: string;
-  public_id: string;
-  _id: string;
-};
-
-type ProductType = {
-  _id?: string;
-  name: string;
-  price?: number;
-  image: ImageObject[];
-  categoryId: string;
-  description: string;
-  company: string;
-  productCode: string;
-};
+// Static categories matching Product interface
+const CATEGORIES = ["Milk", "Butter", "Cheese", "Yogurt", "Ghee"] as const;
+type CategoryType = typeof CATEGORIES[number];
 
 type ProductForm = {
   name: string;
-  price: string;
-  image: (File | ImageObject)[];
-  categoryId: string;
-  description: string;
-  company: string;
-  productCode: string;
+  category: CategoryType | "";
+  price: string[]; // Array of price strings
+  dailyPrice: string[];
+  alternatePrice: string[];
+  weeklyPrice: string[];
+  description: string[];
+  stock: string;
+  quantity: string[]; // Array of quantity strings
+  imageUrl: (File | string)[]; // Array of images (up to 5)
 };
 
 const emptyForm: ProductForm = { 
   name: "", 
-  price: "", 
-  image: [],
-  categoryId: "", 
-  description: "", 
-  company: "", 
-  productCode: "" 
+  category: "",
+  price: [""],
+  dailyPrice: [""],
+  alternatePrice: [""],
+  weeklyPrice: [""],
+  description: [""],
+  stock: "",
+  quantity: [""],
+  imageUrl: []
 };
 
 const ProductsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const products = useSelector(selectProducts) as unknown as ProductType[];
-  const categories = useSelector(selectCategory);
+  const products = useSelector(selectProducts);
   const loading = useSelector(selectProductLoading);
   const error = useSelector(selectProductError);
-  const categoryLoading = useSelector(selectCategoryLoading);
 
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
@@ -88,39 +74,59 @@ const ProductsPage = () => {
 
   useEffect(() => {
     dispatch(fetchProducts());
-    dispatch(fetchCategories());
   }, [dispatch]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+  };
+
+  const handleArrayInput = (field: 'price' | 'dailyPrice' | 'alternatePrice' | 'weeklyPrice' | 'description' | 'quantity', index: number, value: string) => {
+    const newArray = [...form[field]];
+    newArray[index] = value;
+    setForm({ ...form, [field]: newArray });
+  };
+
+  const addArrayItem = (field: 'price' | 'dailyPrice' | 'alternatePrice' | 'weeklyPrice' | 'description' | 'quantity') => {
+    setForm({ ...form, [field]: [...form[field], ""] });
+  };
+
+  const removeArrayItem = (field: 'price' | 'dailyPrice' | 'alternatePrice' | 'weeklyPrice' | 'description' | 'quantity', index: number) => {
+    const newArray = form[field].filter((_, i) => i !== index);
+    setForm({ ...form, [field]: newArray.length > 0 ? newArray : [""] });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newImages = [...form.image];  // Changed from images to image
-      const newPreviews = [...imagePreviews];
-
-      for (let i = 0; i < files.length; i++) {
-        if (newImages.length < 5) {
-          newImages.push(files[i]);
-          newPreviews.push(URL.createObjectURL(files[i]));
-        }
+      const newFiles: File[] = Array.from(files);
+      const currentImages = form.imageUrl.length;
+      const remainingSlots = 5 - currentImages;
+      
+      if (remainingSlots > 0) {
+        const filesToAdd = newFiles.slice(0, remainingSlots);
+        const newImageUrls = [...form.imageUrl, ...filesToAdd];
+        const newPreviews = [
+          ...imagePreviews,
+          ...filesToAdd.map(file => URL.createObjectURL(file))
+        ];
+        
+        setForm({ ...form, imageUrl: newImageUrls });
+        setImagePreviews(newPreviews);
       }
-
-      setForm({ ...form, image: newImages });  // Changed from images to image
-      setImagePreviews(newPreviews);
     }
   };
 
   const removeImage = (index: number) => {
-    const newImages = [...form.image];  // Changed from images to image
-    const newPreviews = [...imagePreviews];
+    const newImageUrls = form.imageUrl.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
     
-    newImages.splice(index, 1);
-    newPreviews.splice(index, 1);
+    // Revoke object URL if it was a File
+    if (form.imageUrl[index] instanceof File && imagePreviews[index]) {
+      URL.revokeObjectURL(imagePreviews[index]);
+    }
     
-    setForm({ ...form, image: newImages });  // Changed from images to image
+    setForm({ ...form, imageUrl: newImageUrls });
     setImagePreviews(newPreviews);
   };
 
@@ -128,20 +134,30 @@ const ProductsPage = () => {
     setActionLoadingId("add");
     const formData = new FormData();
     formData.append("name", form.name);
-    formData.append("price", form.price);
-    formData.append("categoryId", form.categoryId);
-    formData.append("description", form.description);
-    formData.append("company", form.company);
-    formData.append("productCode", form.productCode);
+    formData.append("category", form.category);
+    
+    // Append arrays
+    form.price.forEach(p => formData.append("price", p || "0"));
+    form.dailyPrice.forEach(p => formData.append("dailyPrice", p || "0"));
+    form.alternatePrice.forEach(p => formData.append("alternatePrice", p || "0"));
+    form.weeklyPrice.forEach(p => formData.append("weeklyPrice", p || "0"));
+    form.description.forEach(d => formData.append("description", d || ""));
+    form.quantity.forEach(q => formData.append("quantity", q || ""));
+    
+    formData.append("stock", form.stock || "0");
     
     // Append multiple images
-    form.image.forEach((image) => {
-      if (image instanceof File) {
-        formData.append('image', image);
+    form.imageUrl.forEach((img) => {
+      if (img instanceof File) {
+        formData.append("imageUrl", img);
+      } else if (typeof img === "string") {
+        formData.append("imageUrl", img);
       }
     });
 
     await dispatch(addProduct(formData));
+    // Revoke all object URLs
+    imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
     setForm(emptyForm);
     setImagePreviews([]);
     setDialogOpen(false);
@@ -149,19 +165,36 @@ const ProductsPage = () => {
     dispatch(fetchProducts());
   };
 
-  const handleEdit = (prod: ProductType) => {
+  const handleEdit = (prod: Product) => {
     setEditId(prod._id ?? null);
+    
+    // Handle imageUrl - can be string, array of strings, or null
+    let imageUrls: (File | string)[] = [];
+    let previews: string[] = [];
+    
+    if (prod.imageUrl) {
+      if (typeof prod.imageUrl === "string") {
+        imageUrls = [prod.imageUrl];
+        previews = [prod.imageUrl];
+      } else if (Array.isArray(prod.imageUrl)) {
+        imageUrls = prod.imageUrl as string[];
+        previews = prod.imageUrl as string[];
+      }
+    }
+    
     setForm({
       name: prod.name,
-      price: prod.price != null ? prod.price.toString() : "",
-      image: prod.image || [],
-      categoryId: prod.categoryId,
-      description: prod.description,
-      company: prod.company,
-      productCode: prod.productCode,
+      category: prod.category || "",
+      price: prod.price && prod.price.length > 0 ? prod.price.map(p => p.toString()) : [""],
+      dailyPrice: prod.dailyPrice && prod.dailyPrice.length > 0 ? prod.dailyPrice.map(p => p.toString()) : [""],
+      alternatePrice: prod.alternatePrice && prod.alternatePrice.length > 0 ? prod.alternatePrice.map(p => p.toString()) : [""],
+      weeklyPrice: prod.weeklyPrice && prod.weeklyPrice.length > 0 ? prod.weeklyPrice.map(p => p.toString()) : [""],
+      description: prod.description && prod.description.length > 0 ? prod.description : [""],
+      stock: prod.stock?.toString() || "",
+      quantity: prod.quantity && prod.quantity.length > 0 ? prod.quantity : [""],
+      imageUrl: imageUrls,
     });
-    // Store original images for comparison
-    setImagePreviews((prod.image || []).map(img => img.url));
+    setImagePreviews(previews);
     setDialogOpen(true);
   };
 
@@ -170,26 +203,39 @@ const ProductsPage = () => {
       setActionLoadingId(editId);
       const formData = new FormData();
       
-      // Append text fields
       formData.append("name", form.name);
-      formData.append("price", form.price);
-      formData.append("categoryId", form.categoryId);
-      formData.append("description", form.description);
-      formData.append("company", form.company);
-      formData.append("productCode", form.productCode);
+      formData.append("category", form.category);
       
-      // Get existing images and their public_ids
-      const existingImages = form.image.filter(img => !(img instanceof File)) as ImageObject[];
-      const retainedImageIds = existingImages.map(img => img.public_id);
-      formData.append("retainedImageIds", JSON.stringify(retainedImageIds));
-
-      // Append new images
-      const newImages = form.image.filter(img => img instanceof File) as File[];
-      newImages.forEach(image => {
-        formData.append('image', image);
+      // Append arrays
+      form.price.forEach(p => formData.append("price", p || "0"));
+      form.dailyPrice.forEach(p => formData.append("dailyPrice", p || "0"));
+      form.alternatePrice.forEach(p => formData.append("alternatePrice", p || "0"));
+      form.weeklyPrice.forEach(p => formData.append("weeklyPrice", p || "0"));
+      form.description.forEach(d => formData.append("description", d || ""));
+      form.quantity.forEach(q => formData.append("quantity", q || ""));
+      
+      formData.append("stock", form.stock || "0");
+      
+      // Append multiple images
+      form.imageUrl.forEach((img) => {
+        if (img instanceof File) {
+          formData.append("imageUrl", img);
+        } else if (typeof img === "string") {
+          formData.append("imageUrl", img);
+        }
       });
 
       await dispatch(updateProduct(editId, formData));
+      // Revoke all object URLs
+      imagePreviews.forEach(preview => {
+        try {
+          if (preview.startsWith("blob:")) {
+            URL.revokeObjectURL(preview);
+          }
+        } catch {
+          // Ignore errors
+        }
+      });
       setEditId(null);
       setForm(emptyForm);
       setImagePreviews([]);
@@ -215,6 +261,17 @@ const ProductsPage = () => {
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
+            // Revoke all object URLs
+            imagePreviews.forEach(preview => {
+              try {
+                if (preview.startsWith("blob:")) {
+                  URL.revokeObjectURL(preview);
+                }
+              } catch (e) {
+                console.error(e);
+                // Ignore errors
+              }
+            });
             setForm(emptyForm);
             setImagePreviews([]);
             setEditId(null);
@@ -223,7 +280,7 @@ const ProductsPage = () => {
           <DialogTrigger asChild>
             <Button onClick={() => { setEditId(null); setForm(emptyForm); setImagePreviews([]); }}>Add Product</Button>
           </DialogTrigger>
-          <DialogContent className="overflow-y-auto max-h-[80vh]">
+          <DialogContent className="overflow-y-auto max-h-[90vh] w-[95vw] max-w-4xl">
             <DialogHeader>
               <DialogTitle>{editId ? "Edit Product" : "Add Product"}</DialogTitle>
             </DialogHeader>
@@ -234,96 +291,207 @@ const ProductsPage = () => {
               }}
               className="space-y-4"
             >
-              <div>
-                <Label htmlFor="name" className="mb-2">Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Name"
-                  value={form.name}
-                  onChange={handleInput}
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name" className="mb-2">Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Product Name"
+                    value={form.name}
+                    onChange={handleInput}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="category" className="mb-2">Category</Label>
+                  <Select
+                    value={form.category}
+                    onValueChange={val => setForm({ ...form, category: val as CategoryType })}
+                    required
+                  >
+                    <SelectTrigger id="category" className="w-full">
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
               <div>
-                <Label htmlFor="productCode" className="mb-2">Product Code</Label>
-                <Input
-                  id="productCode"
-                  name="productCode"
-                  placeholder="Product Code"
-                  value={form.productCode}
-                  onChange={handleInput}
-                  required
-                />
+                <Label className="mb-2">Price</Label>
+                {form.price.map((price, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input
+                      type="number"
+                      placeholder="Price"
+                      value={price}
+                      onChange={(e) => handleArrayInput('price', index, e.target.value)}
+                    />
+                    {form.price.length > 1 && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('price', index)}>
+                        <X size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('price')}>
+                  + Add Price
+                </Button>
               </div>
+
               <div>
-                <Label htmlFor="company" className="mb-2">Company</Label>
-                <Input
-                  id="company"
-                  name="company"
-                  placeholder="Company"
-                  value={form.company}
-                  onChange={handleInput}
-                  required
-                />
+                <Label className="mb-2">Daily Price (Optional)</Label>
+                {form.dailyPrice.map((price, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input
+                      type="number"
+                      placeholder="Daily Price"
+                      value={price}
+                      onChange={(e) => handleArrayInput('dailyPrice', index, e.target.value)}
+                    />
+                    {form.dailyPrice.length > 1 && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('dailyPrice', index)}>
+                        <X size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('dailyPrice')}>
+                  + Add Daily Price
+                </Button>
               </div>
+
               <div>
-                <Label htmlFor="categoryId" className="mb-2">Category</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={val => setForm({ ...form, categoryId: val })}
-                  required
-                >
-                  <SelectTrigger id="categoryId" className="w-full">
-                    <SelectValue placeholder={categoryLoading ? "Loading..." : "Select Category"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories && categories.length > 0 && categories.map((cat: Category) => (
-                      <SelectItem key={cat._id} value={cat._id!}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-2">Alternate Price (Optional)</Label>
+                {form.alternatePrice.map((price, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input
+                      type="number"
+                      placeholder="Alternate Price"
+                      value={price}
+                      onChange={(e) => handleArrayInput('alternatePrice', index, e.target.value)}
+                    />
+                    {form.alternatePrice.length > 1 && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('alternatePrice', index)}>
+                        <X size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('alternatePrice')}>
+                  + Add Alternate Price
+                </Button>
               </div>
+
               <div>
-                <Label htmlFor="description" className="mb-2">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Description"
-                  value={form.description}
-                  onChange={handleInput}
-                  className="h-20"
-                />
+                <Label className="mb-2">Weekly Price (Optional)</Label>
+                {form.weeklyPrice.map((price, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input
+                      type="number"
+                      placeholder="Weekly Price"
+                      value={price}
+                      onChange={(e) => handleArrayInput('weeklyPrice', index, e.target.value)}
+                    />
+                    {form.weeklyPrice.length > 1 && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('weeklyPrice', index)}>
+                        <X size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('weeklyPrice')}>
+                  + Add Weekly Price
+                </Button>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="stock" className="mb-2">Stock</Label>
+                  <Input
+                    id="stock"
+                    name="stock"
+                    type="number"
+                    placeholder="Stock Quantity"
+                    value={form.stock}
+                    onChange={handleInput}
+                  />
+                </div>
+              </div>
+
               <div>
-                <Label htmlFor="image" className="mb-2">Images (Max 5)</Label>
+                <Label className="mb-2">Quantity</Label>
+                {form.quantity.map((qty, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input
+                      placeholder="Quantity"
+                      value={qty}
+                      onChange={(e) => handleArrayInput('quantity', index, e.target.value)}
+                    />
+                    {form.quantity.length > 1 && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('quantity', index)}>
+                        <X size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('quantity')}>
+                  + Add Quantity
+                </Button>
+              </div>
+
+              <div>
+                <Label className="mb-2">Description</Label>
+                {form.description.map((desc, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Textarea
+                      placeholder="Description"
+                      value={desc}
+                      onChange={(e) => handleArrayInput('description', index, e.target.value)}
+                      className="h-20"
+                    />
+                    {form.description.length > 1 && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('description', index)}>
+                        <X size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('description')}>
+                  + Add Description
+                </Button>
+              </div>
+
+              <div>
+                <Label htmlFor="imageUrl" className="mb-2">Images (Max 5)</Label>
                 <input
-                  id="image"
+                  id="imageUrl"
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={handleImageChange}
-                  disabled={form.image.length >= 5}  // Changed from images to image
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
+                  disabled={form.imageUrl.length >= 5}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80 disabled:opacity-50"
                 />
-                <div className="text-sm text-gray-500 mt-1">
-                  {form.image.length}/5 images uploaded  {/* Changed from images to image */}
-                </div>
-              </div>
-              {imagePreviews.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex flex-wrap gap-3">
-                    {imagePreviews.map((preview, index) => (
-                      <div 
-                        key={index} 
-                        className="relative flex-shrink-0"
-                      >
+                {form.imageUrl.length >= 5 && (
+                  <p className="text-sm text-gray-500 mt-1">Maximum 5 images allowed</p>
+                )}
+                {form.imageUrl.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {form.imageUrl.map((img, index) => (
+                      <div key={index} className="relative inline-block">
                         <Image 
-                          src={preview} 
+                          src={imagePreviews[index] || (typeof img === "string" ? img : "")} 
                           alt={`Preview ${index + 1}`} 
-                          width={100} 
-                          height={100} 
-                          className="h-24 w-24 object-cover rounded border-2 border-gray-200"
+                          width={150} 
+                          height={150} 
+                          className="h-32 w-full object-cover rounded border-2 border-gray-200"
                         />
                         <button
                           type="button"
@@ -335,8 +503,8 @@ const ProductsPage = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               <DialogFooter>
                 <Button type="submit" disabled={!!(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId))}>
                   {(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId)) ? (
@@ -345,7 +513,20 @@ const ProductsPage = () => {
                   {editId ? "Update" : "Add"}
                 </Button>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={() => { setEditId(null); setForm(emptyForm); setImagePreviews([]); }}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={() => { 
+                    imagePreviews.forEach(preview => {
+                      try {
+                        if (preview.startsWith("blob:")) {
+                          URL.revokeObjectURL(preview);
+                        }
+                      } catch {
+                        // Ignore errors
+                      }
+                    });
+                    setEditId(null); 
+                    setForm(emptyForm); 
+                    setImagePreviews([]); 
+                  }}>Cancel</Button>
                 </DialogClose>
               </DialogFooter>
             </form>
@@ -360,47 +541,50 @@ const ProductsPage = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col className="w-[200px]" />
-                <col className="w-[100px]" />
-                <col className="w-[100px]" />
-                <col className="w-[150px]" />
-                <col className="w-[200px]" />
-                <col className="w-[180px]" />
-              </colgroup>
+            <table className="w-full">
               <thead>
                 <tr className="border-b">
                   <th className="py-3 px-4 text-left">Name</th>
-                  <th className="py-3 px-4 text-left">Code</th>
-                  <th className="py-3 px-4 text-left">Company</th>
                   <th className="py-3 px-4 text-left">Category</th>
-                  <th className="py-3 px-4 text-left">Images</th>
+                  <th className="py-3 px-4 text-left">Price</th>
+                  <th className="py-3 px-4 text-left">Stock</th>
+                  <th className="py-3 px-4 text-left">Quantity</th>
+                  <th className="py-3 px-4 text-left">Image</th>
                   <th className="py-3 px-4 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {products && products.length > 0 ? (
-                  products.map((prod: ProductType) => (
+                  products.map((prod: Product) => (
                     <tr key={prod._id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">{prod.name}</td>
-                      <td className="py-3 px-4">{prod.productCode}</td>
-                      <td className="py-3 px-4">{prod.company}</td>
-                      <td className="py-3 px-4">{categories.find((c: Category) => c._id === prod.categoryId)?.name || "-"}</td>
+                      <td className="py-3 px-4 font-medium">{prod.name}</td>
                       <td className="py-3 px-4">
-                        {prod.image && prod.image.length > 0 ? (
-                          <div className="flex gap-2 flex-wrap">
-                            {prod.image.map((img: ImageObject, index: number) => (
-                              <Image 
-                                key={img._id} 
-                                src={img.url} 
-                                alt={`${prod.name} ${index + 1}`} 
-                                className="h-16 w-16 object-cover rounded" 
-                                width={64} 
-                                height={64}
-                              />
-                            ))}
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
+                          {prod.category}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {prod.price && prod.price.length > 0 ? (
+                          <div className="text-sm">
+                            ₹{prod.price.join(", ₹")}
                           </div>
+                        ) : "-"}
+                      </td>
+                      <td className="py-3 px-4">{prod.stock ?? "-"}</td>
+                      <td className="py-3 px-4">
+                        {prod.quantity && prod.quantity.length > 0 ? (
+                          <div className="text-sm">{prod.quantity.join(", ")}</div>
+                        ) : "-"}
+                      </td>
+                      <td className="py-3 px-4">
+                        {prod.imageUrl ? (
+                          <Image 
+                            src={prod.imageUrl} 
+                            alt={prod.name} 
+                            className="h-16 w-16 object-cover rounded" 
+                            width={64} 
+                            height={64}
+                          />
                         ) : "-"}
                       </td>
                       <td className="py-3 px-4">
@@ -423,7 +607,7 @@ const ProductsPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="text-center py-4 text-muted-foreground">
+                    <td colSpan={7} className="text-center py-4 text-muted-foreground">
                       No products found.
                     </td>
                   </tr>

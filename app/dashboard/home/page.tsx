@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchHomes,
@@ -26,16 +26,23 @@ import type { AppDispatch } from "@/lib/store";
 import { Loader } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import type { Home } from "@/lib/redux/homeSlice";
+import type { Banner, FeaturedCategory, Home } from "@/lib/redux/homeSlice";
 
-// Form type for local state (logo and banners can be File or string)
+// Form type for local state
 type HomeForm = {
-  company: string;
-  logo: File | string | null;
-  banners: (File | string)[];
+  banners: Array<{
+    imageFile?: File;
+    imageUrl?: string;
+    title: string;
+    description: string;
+  }>;
+  featuredSections: Array<{
+    title: string;
+    products: string[];
+  }>;
 };
 
-const emptyForm: HomeForm = { company: "", logo: null, banners: [] };
+const emptyForm: HomeForm = { banners: [], featuredSections: [] };
 
 const HomePage = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -46,61 +53,84 @@ const HomePage = () => {
   const [form, setForm] = useState<HomeForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-
-  // Refs for file inputs to reset them
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const bannersInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     dispatch(fetchHomes());
   }, [dispatch]);
 
-  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleBannerChange = (index: number, field: 'title' | 'description', value: string) => {
+    const updatedBanners = [...form.banners];
+    updatedBanners[index] = { ...updatedBanners[index], [field]: value };
+    setForm({ ...form, banners: updatedBanners });
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files && e.target.files[0];
-    if (file) {
-      setForm({ ...form, logo: file });
-      setLogoPreview(URL.createObjectURL(file));
-    } else {
-      setForm({ ...form, logo: null });
-      setLogoPreview(null);
-    }
+  const handleBannerImageChange = (index: number, file: File) => {
+    const updatedBanners = [...form.banners];
+    updatedBanners[index] = { ...updatedBanners[index], imageFile: file, imageUrl: URL.createObjectURL(file) };
+    setForm({ ...form, banners: updatedBanners });
   };
 
-  const handleBannersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    setForm({ ...form, banners: files });
-    setBannerPreviews(files.map(file => URL.createObjectURL(file)));
+  const addBanner = () => {
+    setForm({ ...form, banners: [...form.banners, { title: "", description: "" }] });
   };
 
-  const resetFormAndPreviews = () => {
+  const removeBanner = (index: number) => {
+    const updatedBanners = form.banners.filter((_, i) => i !== index);
+    setForm({ ...form, banners: updatedBanners });
+  };
+
+  const handleFeaturedSectionChange = (index: number, field: 'title', value: string) => {
+    const updatedSections = [...form.featuredSections];
+    updatedSections[index] = { ...updatedSections[index], [field]: value };
+    setForm({ ...form, featuredSections: updatedSections });
+  };
+
+  const handleFeaturedProductsChange = (sectionIndex: number, value: string) => {
+    const updatedSections = [...form.featuredSections];
+    // Split comma-separated product IDs
+    updatedSections[sectionIndex] = { 
+      ...updatedSections[sectionIndex], 
+      products: value.split(',').map(p => p.trim()).filter(p => p)
+    };
+    setForm({ ...form, featuredSections: updatedSections });
+  };
+
+  const addFeaturedSection = () => {
+    setForm({ ...form, featuredSections: [...form.featuredSections, { title: "", products: [] }] });
+  };
+
+  const removeFeaturedSection = (index: number) => {
+    const updatedSections = form.featuredSections.filter((_, i) => i !== index);
+    setForm({ ...form, featuredSections: updatedSections });
+  };
+
+  const resetForm = () => {
     setForm(emptyForm);
-    setLogoPreview(null);
-    setBannerPreviews([]);
     setEditId(null);
-    // Reset file inputs so they don't retain previous files
-    if (logoInputRef.current) logoInputRef.current.value = "";
-    if (bannersInputRef.current) bannersInputRef.current.value = "";
   };
 
   const handleAdd = async () => {
     setActionLoadingId("add");
     const formData = new FormData();
-    formData.append("company", form.company);
-    if (form.logo instanceof File) formData.append("logo", form.logo);
-    if (form.banners && form.banners.length > 0) {
-      (form.banners as (File | string)[]).forEach((file) => {
-        if (file instanceof File) formData.append("banners", file);
-      });
-    }
+    
+    // Add banners
+    form.banners.forEach((banner, index) => {
+      if (banner.imageFile) {
+        formData.append(`banners[${index}][image]`, banner.imageFile);
+      }
+      formData.append(`banners[${index}][title]`, banner.title);
+      formData.append(`banners[${index}][description]`, banner.description);
+    });
+    
+    // Add featured sections
+    form.featuredSections.forEach((section, index) => {
+      formData.append(`featuredSections[${index}][title]`, section.title);
+      formData.append(`featuredSections[${index}][products]`, JSON.stringify(section.products));
+    });
+    
     await dispatch(addHome(formData));
-    resetFormAndPreviews();
+    resetForm();
     setDialogOpen(false);
     setActionLoadingId(null);
     dispatch(fetchHomes());
@@ -109,33 +139,48 @@ const HomePage = () => {
   const handleEdit = (home: Home) => {
     setEditId(home._id ?? null);
     setForm({
-      company: home.company ?? "",
-      logo: null,
-      banners: [],
+      banners: Array.isArray(home.banners) 
+        ? home.banners.map((banner: Banner) => ({
+            imageUrl: banner.imageUrl || "",
+            title: banner.title || "",
+            description: banner.description || "",
+          }))
+        : [],
+      featuredSections: Array.isArray(home.featuredSections)
+        ? home.featuredSections.map((section: FeaturedCategory) => ({
+            title: section.title || "",
+            products: Array.isArray(section.products) ? section.products : [],
+          }))
+        : [],
     });
-    setLogoPreview(home.logo ? String(home.logo) : null);
-    setBannerPreviews(Array.isArray(home.banners) ? home.banners.map(String) : []);
     setDialogOpen(true);
-    // Reset file inputs so they don't retain previous files
-    setTimeout(() => {
-      if (logoInputRef.current) logoInputRef.current.value = "";
-      if (bannersInputRef.current) bannersInputRef.current.value = "";
-    }, 0);
   };
 
   const handleUpdate = async () => {
     if (editId) {
       setActionLoadingId(editId);
       const formData = new FormData();
-      formData.append("company", form.company);
-      if (form.logo instanceof File) formData.append("logo", form.logo);
-      if (form.banners && form.banners.length > 0) {
-        (form.banners as (File | string)[]).forEach((file) => {
-          if (file instanceof File) formData.append("banners", file);
-        });
-      }
+      
+      // Add banners
+      form.banners.forEach((banner, index) => {
+        if (banner.imageFile) {
+          formData.append(`banners[${index}][image]`, banner.imageFile);
+        }
+        if (banner.imageUrl && !banner.imageFile) {
+          formData.append(`banners[${index}][imageUrl]`, banner.imageUrl);
+        }
+        formData.append(`banners[${index}][title]`, banner.title);
+        formData.append(`banners[${index}][description]`, banner.description);
+      });
+      
+      // Add featured sections
+      form.featuredSections.forEach((section, index) => {
+        formData.append(`featuredSections[${index}][title]`, section.title);
+        formData.append(`featuredSections[${index}][products]`, JSON.stringify(section.products));
+      });
+      
       await dispatch(updateHome(editId, formData));
-      resetFormAndPreviews();
+      resetForm();
       setDialogOpen(false);
       setActionLoadingId(null);
       dispatch(fetchHomes());
@@ -158,13 +203,13 @@ const HomePage = () => {
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
-            resetFormAndPreviews();
+            resetForm();
           }
         }}>
           <DialogTrigger asChild>
-            <Button onClick={() => { resetFormAndPreviews(); }}>Add Home</Button>
+            <Button onClick={() => { resetForm(); }}>Add Home</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editId ? "Edit Home" : "Add Home"}</DialogTitle>
             </DialogHeader>
@@ -173,54 +218,111 @@ const HomePage = () => {
                 e.preventDefault();
                 editId ? handleUpdate() : handleAdd();
               }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <div>
-                <Label htmlFor="company" className="mb-2">Company</Label>
-                <Input
-                  id="company"
-                  name="company"
-                  placeholder="Company"
-                  value={form.company ?? ""}
-                  onChange={handleInput}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="logo" className="mb-2">Logo</Label>
-                <input
-                  id="logo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
-                  ref={logoInputRef}
-                />
-              </div>
-              {logoPreview && (
-                <div className="mt-2">
-                  <Image src={logoPreview} alt="Logo Preview" className="h-32 w-32 object-cover rounded" width={100} height={100} />
+              {/* Banners Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Banners</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addBanner}>
+                    + Add Banner
+                  </Button>
                 </div>
-              )}
-              <div>
-                <Label htmlFor="banners" className="mb-2">Banners</Label>
-                <input
-                  id="banners"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleBannersChange}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
-                  ref={bannersInputRef}
-                />
+                {form.banners.map((banner, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label>Banner {index + 1}</Label>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeBanner(index)}>
+                        Remove
+                      </Button>
+                    </div>
+                    <div>
+                      <Label htmlFor={`banner-image-${index}`} className="mb-2">Image</Label>
+                      <input
+                        id={`banner-image-${index}`}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleBannerImageChange(index, file);
+                        }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
+                      />
+                      {banner.imageUrl && (
+                        <div className="mt-2">
+                          <Image 
+                            src={banner.imageUrl} 
+                            alt={`Banner ${index + 1} Preview`} 
+                            className="h-32 w-64 object-cover rounded" 
+                            width={256} 
+                            height={128} 
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor={`banner-title-${index}`} className="mb-2">Title</Label>
+                      <Input
+                        id={`banner-title-${index}`}
+                        placeholder="Banner Title"
+                        value={banner.title}
+                        onChange={(e) => handleBannerChange(index, 'title', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`banner-desc-${index}`} className="mb-2">Description</Label>
+                      <Input
+                        id={`banner-desc-${index}`}
+                        placeholder="Banner Description"
+                        value={banner.description}
+                        onChange={(e) => handleBannerChange(index, 'description', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-              {bannerPreviews.length > 0 ? (
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {bannerPreviews.map((src, idx) => (
-                    <Image key={idx} src={src} alt={`Banner ${idx + 1}`} className="h-24 w-40 object-cover rounded" width={100} height={100} />
-                  ))}
+
+              {/* Featured Sections */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Featured Sections</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addFeaturedSection}>
+                    + Add Section
+                  </Button>
                 </div>
-              ) : null}
+                {form.featuredSections.map((section, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label>Section {index + 1}</Label>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeFeaturedSection(index)}>
+                        Remove
+                      </Button>
+                    </div>
+                    <div>
+                      <Label htmlFor={`section-title-${index}`} className="mb-2">Title</Label>
+                      <Input
+                        id={`section-title-${index}`}
+                        placeholder="Section Title"
+                        value={section.title}
+                        onChange={(e) => handleFeaturedSectionChange(index, 'title', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`section-products-${index}`} className="mb-2">Product IDs (comma-separated)</Label>
+                      <Input
+                        id={`section-products-${index}`}
+                        placeholder="product1, product2, product3"
+                        value={section.products.join(', ')}
+                        onChange={(e) => handleFeaturedProductsChange(index, e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <DialogFooter>
                 <Button type="submit" disabled={!!(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId))}>
                   {(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId)) ? (
@@ -229,7 +331,7 @@ const HomePage = () => {
                   {editId ? "Update" : "Add"}
                 </Button>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={() => { resetFormAndPreviews(); }}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={() => { resetForm(); }}>Cancel</Button>
                 </DialogClose>
               </DialogFooter>
             </form>
@@ -238,35 +340,20 @@ const HomePage = () => {
       </div>
       {error && <div className="text-red-500 mb-4">{error}</div>}
       <div className="bg-white rounded shadow p-4">
-        <table className="w-full text-left">
-          <thead>
-            <tr>
-              <th className="py-2">Company Name</th>
-              <th className="py-2">Logo</th>
-              <th className="py-2">Banners</th>
-              <th className="py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {homes && homes.length > 0 ? (
-              homes.map((home: Home) => (
-                <tr key={home._id} className="border-t">
-                  <td className="py-2">{home.company}</td>
-                  <td className="py-2">
-                    {home.logo ? <Image src={String(home.logo)} alt="Logo" className="h-12 w-12 object-cover rounded" width={100} height={100} /> : "-"}
-                  </td>
-                  <td className="py-2">
-                    <div className="flex gap-1 flex-wrap">
-                      {Array.isArray(home.banners) && home.banners.length > 0 ? (
-                        home.banners.map((src: string, idx: number) => (
-                          <Image key={idx} src={String(src)} alt={`Banner ${idx + 1}`} className="h-8 w-20 object-cover rounded" width={100} height={100} />
-                        ))
-                      ) : (
-                        "-"
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-2 flex gap-2">
+        {homes && homes.length > 0 ? (
+          <div className="space-y-6">
+            {homes.map((home: Home) => (
+              <div key={home._id} className="border rounded-lg p-4 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-semibold">Home Entry</h3>
+                    {home.createdAt && (
+                      <p className="text-sm text-gray-500">
+                        Created: {new Date(home.createdAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => handleEdit(home)} disabled={actionLoadingId === home._id}>
                       {actionLoadingId === home._id && editId === home._id ? (
                         <Loader className="animate-spin mr-2" size={16} />
@@ -279,18 +366,68 @@ const HomePage = () => {
                       ) : null}
                       Delete
                     </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="text-center py-4 text-muted-foreground">
-                  No home entries found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+                
+                {/* Banners Display */}
+                <div>
+                  <h4 className="font-medium mb-2">Banners ({Array.isArray(home.banners) ? home.banners.length : 0})</h4>
+                  {Array.isArray(home.banners) && home.banners.length > 0 ? (
+                    <div className="space-y-3">
+                      {home.banners.map((banner: Banner, idx: number) => (
+                        <div key={idx} className="flex gap-4 border rounded p-3">
+                          {banner.imageUrl && (
+                            <Image 
+                              src={banner.imageUrl} 
+                              alt={banner.title || `Banner ${idx + 1}`} 
+                              className="h-20 w-32 object-cover rounded" 
+                              width={128} 
+                              height={80} 
+                            />
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium">{banner.title || `Banner ${idx + 1}`}</p>
+                            <p className="text-sm text-gray-600">{banner.description || "-"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No banners</p>
+                  )}
+                </div>
+
+                {/* Featured Sections Display */}
+                <div>
+                  <h4 className="font-medium mb-2">Featured Sections ({Array.isArray(home.featuredSections) ? home.featuredSections.length : 0})</h4>
+                  {Array.isArray(home.featuredSections) && home.featuredSections.length > 0 ? (
+                    <div className="space-y-2">
+                      {home.featuredSections.map((section: FeaturedCategory, idx: number) => (
+                        <div key={idx} className="border rounded p-3">
+                          <p className="font-medium">{section.title || `Section ${idx + 1}`}</p>
+                          <p className="text-sm text-gray-600">
+                            Products: {Array.isArray(section.products) ? section.products.length : 0} product(s)
+                          </p>
+                          {Array.isArray(section.products) && section.products.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              IDs: {section.products.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No featured sections</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No home entries found.
+          </div>
+        )}
       </div>
     </div>
   );

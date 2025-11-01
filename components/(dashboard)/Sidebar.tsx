@@ -17,9 +17,9 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Home", href: "/dashboard/home", icon: Home },
-  { name: "Delivery Partners", href: "/dashboard/category", icon: FileText },
+  { name: "Delivery Partners", href: "/dashboard/delivery-partners", icon: FileText },
   { name: "Products", href: "/dashboard/products", icon: Contact },
-  { name: "Subscriptions", href: "/dashboard/distributors", icon: Users },
+  { name: "Subscriptions", href: "/dashboard/subscriptions", icon: Users },
   { name: "Orders", href: "/dashboard/orders", icon: User },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
   { name: "Logout", href: "/logout", icon: LogOut },

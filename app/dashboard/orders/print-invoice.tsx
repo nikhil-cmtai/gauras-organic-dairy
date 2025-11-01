@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { updateOrderInvoice } from '@/lib/redux/orderSlice';
+import { updateOrder } from '@/lib/redux/orderSlice';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/lib/store';
 
@@ -255,7 +255,7 @@ const PrintInvoice = () => {
         distributorId: orderDataWithoutId.distributorId
       };
 
-      dispatch(updateOrderInvoice(orderData._id || '', essentialOrderData));
+      dispatch(updateOrder(orderData._id || '', essentialOrderData));
             
       // Trigger print
       setTimeout(() => {

@@ -47,24 +47,24 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #ffffff;            /* deep forest green from background */
-  --foreground: #F9E073;            /* light yellow from the circle */
+  --background: #ffffff;            /* white background */
+  --foreground: #18351A;            /* deep forest green for normal text */
   --card: #225127;                  /* moderately lighter green for cards */
-  --card-foreground: #F9E073;
+  --card-foreground: #18351A;       /* use deep green text for cards */
   --popover: #3A492D;               /* olive green for popovers */
-  --popover-foreground: #F9E073;
+  --popover-foreground: #18351A;    /* use deep green text for popovers */
   --primary: #F9E073;               /* yellow as primary highlight */
-  --primary-foreground: #18351A;    /* dark for contrast on yellow */
-  --secondary: #38AB50;             /* vibrant green from lower left leaf */
-  --secondary-foreground: #18351A;  /* provide contrast */
+  --primary-foreground: #18351A;    /* dark for contrast on yellow (buttons etc) */
+  --secondary: #38AB50;             /* vibrant green */
+  --secondary-foreground: #18351A;  /* dark for contrast on secondary */
   --muted: #496837;                 /* desaturated green for subtle backgrounds */
-  --muted-foreground: #B5A24C;      /* muted yellow for foreground */
-  --accent: #247834;                /* rich green for elements */
-  --accent-foreground: #F9E073;
-  --destructive: #F44336;           /* red: not in image but used for errors */
-  --border: #C6B834;                /* yellow-gold for borders */
-  --input: #3A492D;                 /* olive as the input background */
-  --ring: #F9E073;                  /* yellow as accent ring */
+  --muted-foreground: #5B6840;      /* more subtle darker muted color */
+  --accent: #247834;                /* rich green for accent elements */
+  --accent-foreground: #fff;        /* white for contrast on accent */
+  --destructive: #F44336;
+  --border: #C6B834;
+  --input: #3A492D;
+  --ring: #F9E073;
   --chart-1: #F9E073;
   --chart-2: #38AB50;
   --chart-3: #225127;
@@ -81,21 +81,21 @@
 }
 
 .dark {
-  --background: #122611;               /* slightly deeper green */
-  --foreground: #FFE970;               /* lighter yellow for contrast in dark */
+  --background: #122611;                /* slightly deeper green */
+  --foreground: #FFE970;                /* yellowish for normal text in dark */
   --card: #1C330F;
   --card-foreground: #FFE970;
   --popover: #254024;
   --popover-foreground: #FFE970;
   --primary: #FFE970;
   --primary-foreground: #18351A;
-  --secondary: #247834;                /* bright green for accent in dark mode */
+  --secondary: #247834;                 /* bright green for accent in dark mode */
   --secondary-foreground: #FFE970;
   --muted: #1C330F;
-  --muted-foreground: #806F33;
+  --muted-foreground: #80702d;          /* muted yellow in dark */
   --accent: #38AB50;
-  --accent-foreground: #FFE970;
-  --destructive: #FF6659;              /* lighter red for errors */
+  --accent-foreground: #18351A;         /* dark text on accent in dark mode */
+  --destructive: #FF6659;
   --border: #B5A24C;
   --input: #254024;
   --ring: #FFE970;
@@ -121,9 +121,23 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* override unwanted yellow for strong text/headings/paragraphs etc. */
+  h1, h2, h3, h4, h5, h6,
+  p, span, li, label, input, textarea, select,
+  .text-foreground {
+    color: var(--foreground);
+  }
+  /* Primary/secondary button text uses correct contrast color */
+  .btn-primary, .bg-primary, .text-primary {
+    color: var(--primary-foreground)!important;
+    background-color: var(--primary);
+  }
+  .bg-secondary, .btn-secondary, .text-secondary {
+    color: var(--secondary-foreground)!important;
+    background-color: var(--secondary);
+  }
 }
 
-/* Blob animations for hero section */
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);

@@ -9,11 +9,11 @@ export default function HeroSection() {
             <div className="absolute -bottom-8 left-40 w-72 h-72 bg-amber-200 rounded-full mix-blend-multiply filter blur-xl opacity-40 animate-blob animation-delay-4000"></div>
             
             <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left relative z-10 px-4">
-                <h1 className="text-4xl md:text-5xl font-extrabold text-secondary mb-4">Gauras Organic Dairy</h1>
-                <p className="text-lg text-amber-600 mb-2 max-w-xl font-semibold">
+                <h1 className="text-4xl md:text-5xl font-extrabold text-primary mb-4">Gauras Organic Dairy</h1>
+                <p className="text-lg text-primary mb-2 max-w-xl font-semibold">
                   One of India&apos;s largest manufacturers of milk and dairy products
                 </p>
-                <p className="text-base text-gray-700 mb-6 max-w-xl">
+                <p className="text-base text-foreground mb-6 max-w-xl">
                   Latest range & comprehensive variety of dairy products under the trusted brand <b>&apos;Gauras Organic Dairy&apos;</b>. Delivering fresh, nutritious, and high-quality dairy for every home.
                 </p>
                 <a href="#download" className="inline-block bg-secondary hover:bg-accent text-white font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">Download Our App</a>

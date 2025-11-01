@@ -12,8 +12,8 @@ export default function FeaturesSection() {
           {features.map((f, i) => (
             <div key={i} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 flex flex-col items-center text-center border border-gray-100">
               <div className="text-4xl mb-3">{f.icon}</div>
-              <h3 className="font-bold text-lg mb-2 text-secondary">{f.title}</h3>
-              <p className="text-gray-600">{f.desc}</p>
+              <h3 className="font-bold text-lg mb-2 text-primary">{f.title}</h3>
+              <p className="text-foreground">{f.desc}</p>
             </div>
           ))}
         </div>

@@ -1,26 +1,46 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { Order } from '@/lib/redux/orderSlice';
+import type { Order, OrderProduct } from '@/lib/redux/orderSlice';
 import { useSelector } from 'react-redux';
 import { selectUser } from '@/lib/redux/authSlice';
+import { selectUsers } from '@/lib/redux/userSlice';
 import { convertToWords } from '@/lib/utils';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+
+interface InvoiceItem extends OrderProduct {
+  manualPrice: string;
+  calculatedPrice: number;
+}
 
 interface InvoiceProps {
   order: Order;
-  distributorName: string;
-  productName: string;
 }
 
-const Invoice: React.FC<InvoiceProps> = ({ order, distributorName, productName }) => {
+const Invoice: React.FC<InvoiceProps> = ({ order }) => {
   const router = useRouter();
   const user = useSelector(selectUser);
-  const [orderItems, setOrderItems] = useState(order.orders.map(item => ({
-    ...item,
-    manualPrice: item.price.toString()
-  })));
+  const users = useSelector(selectUsers);
+  
+  // Get user name from order.user ID
+  const orderUser = users.find(u => u._id === order.user);
+  const distributorName = orderUser?.name || "Unknown User";
+  
+  // Calculate price per product (divide totalAmount by number of products)
+  const pricePerProduct = order.products && order.products.length > 0 
+    ? (order.totalAmount || 0) / order.products.length 
+    : 0;
+
+  const [orderItems, setOrderItems] = useState<InvoiceItem[]>(() => {
+    if (!order.products || order.products.length === 0) {
+      return [];
+    }
+    return order.products.map((item: OrderProduct) => ({
+      ...item,
+      manualPrice: pricePerProduct.toFixed(2),
+      calculatedPrice: pricePerProduct,
+    }));
+  });
   
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -39,10 +59,11 @@ const Invoice: React.FC<InvoiceProps> = ({ order, distributorName, productName }
   const calculateTotal = () => {
     let total = 0;
     orderItems.forEach(item => {
-      const price = parseFloat(item.manualPrice) || item.price;
-      total += price * item.quantity;
+      const price = parseFloat(item.manualPrice) || 0;
+      const quantity = parseFloat(item.quantity) || item.quantityPacket || 1;
+      total += price * quantity;
     });
-    return total;
+    return total || order.totalAmount || 0;
   };
 
   // Handle print with Next.js component
@@ -50,8 +71,9 @@ const Invoice: React.FC<InvoiceProps> = ({ order, distributorName, productName }
     // Store current order and user data in localStorage for the print page to access
     localStorage.setItem('currentOrder', JSON.stringify({
       ...order,
-      orders: orderItems,
-      distributorName
+      products: orderItems,
+      distributorName,
+      totalAmount: calculateTotal(),
     }));
     
     // Navigate to the print page
@@ -158,31 +180,29 @@ const Invoice: React.FC<InvoiceProps> = ({ order, distributorName, productName }
         <div className="flex justify-between mb-8 header-grid">
           <div>
             <div className="font-bold text-2xl">{user?.name || "NLP ENTERPRISES"}</div>
-            <div>{user?.state || "Jharkhand"}</div>
+            <div>Jharkhand</div>
             <div>Phone: {user?.phone || "1234567890"}</div>
             <div>E-Mail: {user?.email || "nlp.enterprises@gmail.com"}</div>
           </div>
           <div className="text-right">
-            <div><span className="font-bold">Invoice No.</span> {order._id ? order._id.slice(-4) : 'feec'}</div>
-            <div><span className="font-bold">Dated</span> {currentDate}</div>
-            <div><span className="font-bold">Mode/Terms of Payment</span></div>
+            <div><span className="font-bold">Invoice No.</span> {order._id ? order._id.slice(-8) : 'N/A'}</div>
+            <div><span className="font-bold">Dated</span> {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : currentDate}</div>
+            <div><span className="font-bold">Mode/Terms of Payment</span> {order.paymentMode || 'N/A'}</div>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mb-6 grid-section">
-          <div className="border border-amber-200 p-4 invoice-border">
-            <div className="font-bold mb-2">Consignee (Ship to)</div>
-            <div>{distributorName}</div>
-            <div>GROUND FLOOR BHATTACHAYA,</div>
-            <div>UPPER BAZAR, RANCHI</div>
+          <div className="grid grid-cols-2 gap-4 mb-6 grid-section">
+            <div className="border border-amber-200 p-4 invoice-border">
+              <div className="font-bold mb-2">Consignee (Ship to)</div>
+              <div>{distributorName}</div>
+              <div>{order.deliveryAddress || 'Address not available'}</div>
+            </div>
+            <div className="border border-amber-200 p-4 invoice-border">
+              <div className="font-bold mb-2">Buyer (Bill to)</div>
+              <div>{distributorName}</div>
+              <div>{order.deliveryAddress || 'Address not available'}</div>
+            </div>
           </div>
-          <div className="border border-amber-200 p-4 invoice-border">
-            <div className="font-bold mb-2">Buyer (Bill to)</div>
-            <div>{distributorName}</div>
-            <div>GROUND FLOOR BHATTACHAYA,</div>
-            <div>UPPER BAZAR, RANCHI</div>
-          </div>
-        </div>
         
         <div className="grid grid-cols-2 gap-4 mb-6 grid-section">
           <div className="border border-amber-200 p-4 invoice-border">
@@ -209,27 +229,34 @@ const Invoice: React.FC<InvoiceProps> = ({ order, distributorName, productName }
             </tr>
           </thead>
           <tbody>
-            {orderItems.map((item, index) => {
-              const price = parseFloat(item.manualPrice) || item.price;
-              const amount = price * item.quantity;
-              
-              return (
-                <tr key={index}>
-                  <td className="border border-amber-200 p-2 text-center">{index + 1}</td>
-                  <td className="border border-amber-200 p-2">{item.name || productName}</td>
-                  <td className="border border-amber-200 p-2 text-center">{item.quantity} Pcs</td>
-                  <td className="border border-amber-200 p-2 text-right">
-                    <input
-                      type="text"
-                      value={item.manualPrice}
-                      onChange={(e) => handlePriceChange(index, e.target.value)}
-                      className="w-20 text-right border-b border-gray-300 focus:outline-none"
-                    />
-                  </td>
-                  <td className="border border-amber-200 p-2 text-right">{amount.toFixed(2)}</td>
-                </tr>
-              );
-            })}
+            {orderItems.length > 0 ? (
+              orderItems.map((item, index) => {
+                const price = parseFloat(item.manualPrice) || 0;
+                const quantity = parseFloat(item.quantity) || item.quantityPacket || 1;
+                const amount = price * quantity;
+                
+                return (
+                  <tr key={index}>
+                    <td className="border border-amber-200 p-2 text-center">{index + 1}</td>
+                    <td className="border border-amber-200 p-2">{item.productName || 'Product'}</td>
+                    <td className="border border-amber-200 p-2 text-center">{quantity} Pcs</td>
+                    <td className="border border-amber-200 p-2 text-right">
+                      <input
+                        type="text"
+                        value={item.manualPrice}
+                        onChange={(e) => handlePriceChange(index, e.target.value)}
+                        className="w-20 text-right border-b border-gray-300 focus:outline-none"
+                      />
+                    </td>
+                    <td className="border border-amber-200 p-2 text-right">₹{amount.toFixed(2)}</td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={5} className="border border-amber-200 p-2 text-center">No products found</td>
+              </tr>
+            )}
           </tbody>
           <tfoot>
             <tr>
@@ -246,17 +273,6 @@ const Invoice: React.FC<InvoiceProps> = ({ order, distributorName, productName }
         
         <div className="mt-10 text-right">
           <div>{user?.name || "NLP"}</div>
-          {user?.signature && (
-            <div className="mt-2 mb-2">
-              <Image 
-                src={user.signature} 
-                width={150}
-                height={100}
-                alt="Authorised Signature" 
-                className="h-24 ml-auto object-contain"
-              />
-            </div>
-          )}
           <div>Authorised Signatory</div>
         </div>
         

@@ -1,16 +1,32 @@
 import { createSlice, Dispatch } from "@reduxjs/toolkit";
-import axios from "axios";
 import { RootState } from "../store";
+import apiClient from "../api";
+
+// Banner, FeaturedCategory, Home interfaces
+export interface Banner {
+  _id?: string;
+  imageUrl: string;
+  title: string;
+  description: string;
+}
+
+export interface FeaturedCategory {
+  _id?: string;
+  title: string;
+  products: string[];
+}
 
 export interface Home {
   _id?: string;
-  logo: string;
-  banners: string[];
-  company: string;
+  banners: Banner[];
+  featuredSections: FeaturedCategory[];
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown; // allow extra fields (like __v)
 }
 
 interface HomeState {
-  data: Home[];
+  data: Home[]; // We store it as an array for consistency
   loading: boolean;
   error: string | null;
   selectedHome: Home | null;
@@ -21,17 +37,25 @@ const initialState: HomeState = {
   loading: false,
   error: null,
   selectedHome: null,
-};  
+};
 
-  const homeSlice = createSlice({
+const homeSlice = createSlice({
   name: "homes",
   initialState,
   reducers: {
     setHomes: (state, action) => {
-      state.data = action.payload;
+      // Normalize: Handle when data is a single object (as in the sample response)
+      const _data = action.payload;
+      if (Array.isArray(_data)) {
+        state.data = _data;
+      } else if (_data && typeof _data === "object") {
+        state.data = [_data];
+      } else {
+        state.data = [];
+      }
       state.loading = false;
       state.error = null;
-    },  
+    },
     setLoading: (state, action) => {
       state.loading = action.payload;
     },
@@ -46,76 +70,129 @@ const initialState: HomeState = {
       state.selectedHome = null;
     },
   },
-}); 
+});
 
-export const { setHomes, setLoading, setError, setSelectedHome, clearSelectedHome } = homeSlice.actions;
+export const {
+  setHomes,
+  setLoading,
+  setError,
+  setSelectedHome,
+  clearSelectedHome,
+} = homeSlice.actions;
 
+// Fetch all Home documents
 export const fetchHomes = () => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/home`);
-    
+    const response = await apiClient.get(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home`
+    );
     if (response.status === 200) {
-      dispatch(setHomes(response.data.data));
+      // Accept both { ...object } and { data: [...] }
+      const apiData = response.data;
+      if ("data" in apiData && Array.isArray(apiData.data)) {
+        dispatch(setHomes(apiData.data));
+      } else if (typeof apiData === "object" && apiData !== null) {
+        // Accept single-object response (per sample)
+        dispatch(setHomes(apiData));
+      } else {
+        dispatch(setHomes([]));
+      }
     } else {
-      dispatch(setError(response.data.message));
+      dispatch(setError(response.data.message || "Failed to fetch Home data."));
     }
   } catch (error: unknown) {
-    const message = typeof error === "object" && error && "message" in error ? (error as { message?: string }).message : String(error);
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
     dispatch(setError(message || "Unknown error"));
   }
 };
 
+// Fetch a Home by id
 export const fetchHomeById = (id: string) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`);
+    const response = await apiClient.get(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`
+    );
+    // The API returns the Home doc directly
     const data: Home = response.data;
     if (response.status === 200) {
-      dispatch(setSelectedHome(data));    
+      dispatch(setSelectedHome(data));
     } else {
-      dispatch(setError(response.data.message));
+      dispatch(setError(response.data.message || "Failed to fetch Home by ID."));
     }
   } catch (error: unknown) {
-    const message = typeof error === "object" && error && "message" in error ? (error as { message?: string }).message : String(error);
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
     dispatch(setError(message || "Unknown error"));
   }
 };
 
-export const addHome = (home: FormData) => async (dispatch: Dispatch) => {
+export const addHome = (home: Partial<Home> | FormData) => async (
+  dispatch: Dispatch
+) => {
   dispatch(setLoading(true));
   try {
-    const formData = home;
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/home`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    if (response.status === 201) {
+    let config = {};
+    const payload = home;
+    if (typeof FormData !== "undefined" && home instanceof FormData) {
+      config = { headers: { "Content-Type": "multipart/form-data" } };
+    } else {
+      config = { headers: { "Content-Type": "application/json" } };
+    }
+    const response = await apiClient.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home`,
+      payload,
+      config
+    );
+    if (response.status === 201 || response.status === 200) {
       return response.data;
     } else {
-      dispatch(setError(response.data.message));
+      dispatch(setError(response.data.message || "Failed to add Home document."));
     }
   } catch (error: unknown) {
-    const message = typeof error === "object" && error && "message" in error ? (error as { message?: string }).message : String(error);
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
     dispatch(setError(message || "Unknown error"));
   }
 };
 
-export const updateHome = (id: string, homeData: FormData) => async (dispatch: Dispatch) => {
+export const updateHome = (id: string, homeData: Partial<Home> | FormData) => async (
+  dispatch: Dispatch
+) => {
   dispatch(setLoading(true));
   try {
-    const formData = homeData;
-    const response = await axios.put(`${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    let config = {};
+    const payload = homeData;
+    if (typeof FormData !== "undefined" && homeData instanceof FormData) {
+      config = { headers: { "Content-Type": "multipart/form-data" } };
+    } else {
+      config = { headers: { "Content-Type": "application/json" } };
+    }
+    const response = await apiClient.put(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`,
+      payload,
+      config
+    );
     dispatch(setLoading(false));
     if (response.status === 200) {
       return response.data;
     } else {
-      dispatch(setError(response.data.message));
+      dispatch(setError(response.data.message || "Failed to update Home document."));
       return null;
     }
   } catch (error: unknown) {
-    const message = typeof error === "object" && error && "message" in error ? (error as { message?: string }).message : String(error);
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
     dispatch(setError(message || "Unknown error"));
     dispatch(setLoading(false));
     return null;
@@ -125,18 +202,24 @@ export const updateHome = (id: string, homeData: FormData) => async (dispatch: D
 export const deleteHome = (id: string) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await axios.delete(`${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`);
+    const response = await apiClient.delete(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`
+    );
     if (response.status === 200) {
-      return response.data;   
+      return response.data;
     } else {
-      dispatch(setError(response.data.message));
+      dispatch(setError(response.data.message || "Failed to delete Home document."));
     }
   } catch (error: unknown) {
-    const message = typeof error === "object" && error && "message" in error ? (error as { message?: string }).message : String(error);
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
     dispatch(setError(message || "Unknown error"));
   }
 };
 
+// Selectors
 export const selectHomes = (state: RootState) => state.homes.data;
 export const selectHomeById = (state: RootState) => state.homes.selectedHome;
 export const selectLoading = (state: RootState) => state.homes.loading;

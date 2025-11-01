@@ -1,317 +1,424 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchSettings,
+  updateSettings,
+  addCoupon,
+  selectSettings,
+  selectSettingsLoading,
+  selectSettingsError,
+} from "@/lib/redux/settingSlice";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader, Loader2, X } from "lucide-react";
 import type { AppDispatch } from "@/lib/store";
+import type { Settings, Coupon } from "@/lib/redux/settingSlice";
+import { Label } from "@/components/ui/label";
 import {
-  fetchAdminById,
-  updateUserProfile,
-  selectUser,
-  selectIsLoading,
-  selectError,
-} from "@/lib/redux/authSlice";
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import Image from "next/image";
+
+type CouponForm = {
+  name: string;
+  discountTitle: string;
+  discountAmount: string;
+  discountType: "percentage" | "fixed" | "";
+};
+
+const emptyCouponForm: CouponForm = {
+  name: "",
+  discountTitle: "",
+  discountAmount: "",
+  discountType: "",
+};
 
 const SettingsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const user = useSelector(selectUser);
-  const loading = useSelector(selectIsLoading);
-  const error = useSelector(selectError);
+  const settings = useSelector(selectSettings);
+  const loading = useSelector(selectSettingsLoading);
+  const error = useSelector(selectSettingsError);
 
-  // Original profile data from API
-  const [originalProfile, setOriginalProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    address: "",
-    pincode: "",
-    state: "",
-    signature: "",
-    gstNumber: "",
-    bankAccountNumber: "",
-    bankIfsc: "",
-    bankAddress: "",
-    bankName: "",
-    accountHolderName: "",
+  const [form, setForm] = useState({
+    gst: "",
+    deliveryCharge: "",
+    extraCharge: "",
   });
-  
-  // Editable profile data (only changed when editing)
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    address: "",
-    pincode: "",
-    state: "",
-    signature: "",
-    gstNumber: "",
-    bankAccountNumber: "",
-    bankIfsc: "",
-    bankAddress: "",
-    bankName: "",
-    accountHolderName: "",
-  });
-  
-  const [success, setSuccess] = useState("");
-  const [editMode, setEditMode] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [loginImageUrls, setLoginImageUrls] = useState<string[]>([]);
+  const [couponForm, setCouponForm] = useState<CouponForm>(emptyCouponForm);
+  const [couponDialogOpen, setCouponDialogOpen] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [newImageUrl, setNewImageUrl] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  // Fetch admin data only once on component mount
   useEffect(() => {
-    // Get admin id from cookie named 'admin_token'
-    let adminId = null;
-    if (typeof document !== "undefined") {
-      const match = document.cookie.match(/(?:^|;\s*)admin_token=([^;]*)/);
-      if (match) {
-        adminId = decodeURIComponent(match[1]);
-      }
-    }
-    if (adminId) {
-      dispatch(fetchAdminById(adminId));
-    }
+    dispatch(fetchSettings());
   }, [dispatch]);
 
-  // Update both original and editable profile when user data changes
   useEffect(() => {
-    if (user) {
-      const userData = {
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        password: "", // Always blank for security
-        address: user.address || "",
-        pincode: user.pincode || "",
-        state: user.state || "",
-        signature: user.signature || "",
-        gstNumber: user.gstNumber || "",
-        bankAccountNumber: user.bankAccountNumber || "",
-        bankIfsc: user.bankIfsc || "",
-        bankAddress: user.bankAddress || "",
-        bankName: user.bankName || "",
-        accountHolderName: user.accountHolderName || "",
-      };
-      setOriginalProfile(userData);
-      setProfile(userData);
+    if (settings) {
+      setForm({
+        gst: settings.gst?.toString() || "",
+        deliveryCharge: settings.deliveryCharge?.toString() || "",
+        extraCharge: settings.extraCharge?.toString() || "",
+      });
+      setLoginImageUrls(settings.loginImageUrls || []);
     }
-  }, [user]);
+  }, [settings]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setProfile((prev) => ({ ...prev, [name]: value }));
+    setForm({ ...form, [name]: value });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Store the selected file
-    setSelectedFile(file);
-    
-    // Create a preview URL for display
-    const previewUrl = URL.createObjectURL(file);
-    setProfile((prev) => ({ ...prev, signature: previewUrl }));
+  const handleCouponInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCouponForm({ ...couponForm, [name]: value });
   };
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent any default action
-    console.log("Edit mode activated - No API call");
-    setEditMode(true);
+  const handleCouponTypeChange = (value: "percentage" | "fixed") => {
+    setCouponForm({ ...couponForm, discountType: value });
   };
 
-  const handleCancel = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent any default action
-    console.log("Edit cancelled - No API call");
-    // Reset form to original values on cancel
-    setProfile(originalProfile);
-    setSelectedFile(null);
-    setEditMode(false);
+  const handleSave = async () => {
+    if (!settings?._id) return;
+    setSaving(true);
+    setActionLoadingId("save");
+
+    const updates: Partial<Settings> = {
+      gst: Number(form.gst) || 0,
+      deliveryCharge: Number(form.deliveryCharge) || 0,
+      extraCharge: Number(form.extraCharge) || 0,
+      loginImageUrls: loginImageUrls,
+    };
+
+    await dispatch(updateSettings(settings._id, updates));
+    setActionLoadingId(null);
+    setSaving(false);
+    dispatch(fetchSettings());
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSuccess("");
-    setIsSaving(true);
-    
-    // Create FormData for file upload
-    const formData = new FormData();
-    
-    // Add all profile fields except password if blank
-    Object.entries(profile).forEach(([key, value]) => {
-      if (key === 'password') {
-        if (value) {
-          formData.append('password', value);
-        }
-      } else if (key !== 'signature' || !selectedFile) {
-        formData.append(key, value);
-      }
-    });
-    
-    // Add file if selected
-    if (selectedFile) {
-      formData.append('signature', selectedFile);
+  const handleAddImageUrl = () => {
+    if (newImageUrl.trim()) {
+      setLoginImageUrls([...loginImageUrls, newImageUrl.trim()]);
+      setNewImageUrl("");
     }
-    
-    try {
-      // Only make API call when saving
-      const res = await dispatch(updateUserProfile(formData, user?._id || ""));
-      setEditMode(false);
+  };
 
-      
-      if (res?.payload) {
-        console.log("API call successful");
-        setSuccess("Profile updated successfully!");
-        setEditMode(false); // Turn off edit mode on success
-        setSelectedFile(null);
-        
-        // Update original profile after successful save
-        if (user) {
-          setOriginalProfile({
-            name: user.name || "",
-            email: user.email || "",
-            phone: user.phone || "",
-            password: user.password || "",
-            address: user.address || "",
-            pincode: user.pincode || "",
-            state: user.state || "",
-            signature: user.signature || "",
-            gstNumber: user.gstNumber || "",
-            bankAccountNumber: user.bankAccountNumber || "",
-            bankIfsc: user.bankIfsc || "",
-            bankAddress: user.bankAddress || "",
-            bankName: user.bankName || "",
-            accountHolderName: user.accountHolderName || "",
-          });
-        }
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setSuccess("");
-        }, 3000);
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-    } finally {
-      setIsSaving(false);
+  const handleRemoveImageUrl = (index: number) => {
+    const newUrls = loginImageUrls.filter((_, i) => i !== index);
+    setLoginImageUrls(newUrls);
+  };
+
+  const handleAddCoupon = async () => {
+    if (!settings?._id) return;
+    if (!couponForm.name || !couponForm.discountTitle || !couponForm.discountAmount || !couponForm.discountType) {
+      return;
     }
+
+    setActionLoadingId("addCoupon");
+    const coupon: Coupon = {
+      name: couponForm.name,
+      discountTitle: couponForm.discountTitle,
+      discountAmount: Number(couponForm.discountAmount) || 0,
+      discountType: couponForm.discountType as "percentage" | "fixed",
+    };
+
+    await dispatch(addCoupon(settings._id, coupon));
+    setCouponForm(emptyCouponForm);
+    setCouponDialogOpen(false);
+    setActionLoadingId(null);
+    dispatch(fetchSettings());
+  };
+
+  const handleRemoveCoupon = async (index: number) => {
+    if (!settings?._id || !settings.coupons) return;
+
+    const updatedCoupons = settings.coupons.filter((_, i) => i !== index);
+    await dispatch(
+      updateSettings(settings._id, {
+        ...settings,
+        coupons: updatedCoupons,
+      })
+    );
+    dispatch(fetchSettings());
   };
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="max-w-3xl w-full">
-        <h1 className="text-3xl font-bold mb-6">Settings</h1>
-        {error && (
-          <div className="flex items-center gap-2 text-red-600 mb-4">
-            <XCircle size={20} /> {error}
-          </div>
-        )}
-        {success && (
-          <div className="flex items-center gap-2 text-green-600 mb-4">
-            <CheckCircle2 size={20} /> {success}
-          </div>
-        )}
-        <form onSubmit={handleSave} className="bg-white rounded shadow p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <Input name="name" value={profile.name} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <Input name="email" value={profile.email} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Phone</label>
-              <Input name="phone" value={profile.phone} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <Input name="password" value={profile.password} onChange={handleChange} disabled={!editMode} type="password" placeholder="Leave blank to keep unchanged" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">GST Number</label>
-              <Input name="gstNumber" value={profile.gstNumber} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div> 
-              <label className="block text-sm font-medium mb-1">Bank Account Number</label>
-              <Input name="bankAccountNumber" value={profile.bankAccountNumber} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bank IFSC</label>
-              <Input name="bankIfsc" value={profile.bankIfsc} onChange={handleChange} disabled={!editMode} required />
+    <div className="w-full mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+
+      {loading && !settings ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="animate-spin h-8 w-8 text-purple-500" />
+        </div>
+      ) : (
+        <div className="bg-white rounded shadow p-6 space-y-6">
+          {/* Basic Settings */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Basic Settings</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="gst" className="mb-2">
+                  GST (%)
+                </Label>
+                <Input
+                  id="gst"
+                  name="gst"
+                  type="number"
+                  placeholder="GST Percentage"
+                  value={form.gst}
+                  onChange={handleInput}
+                />
               </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bank Address</label>
-              <Input name="bankAddress" value={profile.bankAddress} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bank Name</label>
-              <Input name="bankName" value={profile.bankName} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bank Account Holder Name</label>
-              <Input name="accountHolderName" value={profile.accountHolderName} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Address</label>
-              <textarea
-                name="address"
-                value={profile.address}
-                onChange={handleChange}
-                disabled={!editMode}
-                required
-                className="w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 min-h-[70px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
-                placeholder="Enter your address"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Pincode</label>
-              <Input name="pincode" value={profile.pincode} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">State</label>
-              <Input name="state" value={profile.state} onChange={handleChange} disabled={!editMode} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Signature</label>
-              {profile.signature && (
-                <Image src={profile.signature} alt="Signature Preview" width={100} height={200} className="h-16 mb-2 border rounded" />
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                disabled={!editMode}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-              />
+              <div>
+                <Label htmlFor="deliveryCharge" className="mb-2">
+                  Delivery Charge (₹)
+                </Label>
+                <Input
+                  id="deliveryCharge"
+                  name="deliveryCharge"
+                  type="number"
+                  placeholder="Delivery Charge"
+                  value={form.deliveryCharge}
+                  onChange={handleInput}
+                />
+              </div>
+              <div>
+                <Label htmlFor="extraCharge" className="mb-2">
+                  Extra Charge (₹)
+                </Label>
+                <Input
+                  id="extraCharge"
+                  name="extraCharge"
+                  type="number"
+                  placeholder="Extra Charge"
+                  value={form.extraCharge}
+                  onChange={handleInput}
+                />
+              </div>
             </div>
           </div>
-          <div className="flex gap-2 mt-6">
-            {editMode ? (
-              <>
-                <Button type="submit" disabled={loading || isSaving} className="bg-red-600 hover:bg-red-700">
-                  {(loading || isSaving) && <Loader2 className="animate-spin mr-2" size={18} />}
-                  {isSaving ? 'Saving...' : 'Save'}
-                </Button>
-                <Button type="button" variant="outline" onClick={(e) => handleCancel(e)}>
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button type="button" variant="outline" onClick={(e) => handleEdit(e)}>
-                Edit
+
+          {/* Login Images */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Login Images</h2>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Image URL"
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddImageUrl();
+                  }
+                }}
+              />
+              <Button type="button" onClick={handleAddImageUrl}>
+                Add Image
               </Button>
+            </div>
+            {loginImageUrls.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {loginImageUrls.map((url, index) => (
+                  <div key={index} className="relative">
+                    <Image
+                      src={url}
+                      alt={`Login Image ${index + 1}`}
+                      width={200}
+                      height={200}
+                      className="w-full h-32 object-cover rounded border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => handleRemoveImageUrl(index)}
+                    >
+                      <X size={14} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-        </form>
-      </div>
+
+          {/* Coupons */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Coupons</h2>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCouponDialogOpen(true)}
+              >
+                + Add Coupon
+              </Button>
+            </div>
+            {settings?.coupons && settings.coupons.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="py-2 px-4 text-left">Name</th>
+                      <th className="py-2 px-4 text-left">Discount Title</th>
+                      <th className="py-2 px-4 text-left">Discount Amount</th>
+                      <th className="py-2 px-4 text-left">Discount Type</th>
+                      <th className="py-2 px-4 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settings.coupons.map((coupon: Coupon, index: number) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-4">{coupon.name}</td>
+                        <td className="py-2 px-4">{coupon.discountTitle}</td>
+                        <td className="py-2 px-4">
+                          {coupon.discountType === "percentage"
+                            ? `${coupon.discountAmount}%`
+                            : `₹${coupon.discountAmount}`}
+                        </td>
+                        <td className="py-2 px-4">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs capitalize">
+                            {coupon.discountType}
+                          </span>
+                        </td>
+                        <td className="py-2 px-4">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoveCoupon(index)}
+                          >
+                            Remove
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No coupons added yet.</p>
+            )}
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={saving || actionLoadingId === "save"}
+            >
+              {(saving || actionLoadingId === "save") && (
+                <Loader className="animate-spin mr-2" size={18} />
+              )}
+              Save Settings
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Coupon Dialog */}
+      <Dialog open={couponDialogOpen} onOpenChange={setCouponDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Coupon</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="coupon-name">Coupon Name</Label>
+              <Input
+                id="coupon-name"
+                name="name"
+                placeholder="Coupon Name"
+                value={couponForm.name}
+                onChange={handleCouponInput}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="coupon-title">Discount Title</Label>
+              <Input
+                id="coupon-title"
+                name="discountTitle"
+                placeholder="Discount Title"
+                value={couponForm.discountTitle}
+                onChange={handleCouponInput}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="coupon-amount">Discount Amount</Label>
+              <Input
+                id="coupon-amount"
+                name="discountAmount"
+                type="number"
+                placeholder="Discount Amount"
+                value={couponForm.discountAmount}
+                onChange={handleCouponInput}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="coupon-type">Discount Type</Label>
+              <Select
+                value={couponForm.discountType}
+                onValueChange={handleCouponTypeChange}
+                required
+              >
+                <SelectTrigger id="coupon-type">
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage</SelectItem>
+                  <SelectItem value="fixed">Fixed Amount</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCouponForm(emptyCouponForm);
+                }}
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={handleAddCoupon}
+              disabled={actionLoadingId === "addCoupon"}
+            >
+              {actionLoadingId === "addCoupon" && (
+                <Loader className="animate-spin mr-2" size={18} />
+              )}
+              Add Coupon
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
