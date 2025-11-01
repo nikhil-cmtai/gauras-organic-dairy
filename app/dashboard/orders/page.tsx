@@ -13,7 +13,8 @@ import { selectUsers, fetchUsers } from "@/lib/redux/userSlice";
 import { Button } from "@/components/ui/button";
 import { Loader, Loader2 } from "lucide-react";
 import type { AppDispatch } from "@/lib/store";
-import type { Order, OrderStatus } from "@/lib/redux/orderSlice";
+import type { Order } from "@/lib/redux/orderSlice";
+import { OrderStatus } from "@/lib/redux/orderSlice";
 import type { User } from "@/lib/redux/userSlice";
 import {
   Dialog,
@@ -39,7 +40,7 @@ const OrdersPage = () => {
   const users = useSelector(selectUsers);
 
   const [editOrder, setEditOrder] = useState<Order | null>(null);
-  const [editModalData, setEditModalData] = useState<OrderEditData>({ status: 'Pending' });
+  const [editModalData, setEditModalData] = useState<OrderEditData>({ status: OrderStatus.Pending });
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -51,7 +52,7 @@ const OrdersPage = () => {
   const openEditModal = (order: Order) => {
     setEditOrder(order);
     setEditModalData({
-      status: order.status || 'Pending',
+      status: order.status || OrderStatus.Pending,
     });
     setEditModalOpen(true);
   };

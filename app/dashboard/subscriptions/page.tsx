@@ -40,7 +40,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 
 type SubscriptionEditData = {
   status: SubscriptionStatus;
-  deliveryBoy?: string;
+  deliveryBoyId?: string;
 };
 
 const SubscriptionsPage = () => {
@@ -59,7 +59,7 @@ const SubscriptionsPage = () => {
   const [editSubscription, setEditSubscription] = useState<Subscription | null>(null);
   const [editModalData, setEditModalData] = useState<SubscriptionEditData>({
     status: "Active",
-    deliveryBoy: "none",
+    deliveryBoyId: "none",
   });
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -74,7 +74,7 @@ const SubscriptionsPage = () => {
     setEditSubscription(subscription);
     setEditModalData({
       status: subscription.status || "Active",
-      deliveryBoy: subscription.deliveryBoy || "none",
+      deliveryBoyId: subscription.deliveryBoy || "none",
     });
     setEditModalOpen(true);
   };
@@ -90,10 +90,10 @@ const SubscriptionsPage = () => {
     if (!editSubscription || !editSubscription._id) return;
     setActionLoadingId(editSubscription._id);
 
-    const payload: Partial<Subscription> = {
+    const payload: { status: SubscriptionStatus; deliveryBoyId?: string } = {
       status: editModalData.status,
-      deliveryBoy: editModalData.deliveryBoy === "none" ? undefined : editModalData.deliveryBoy,
-    };
+      deliveryBoyId: editModalData.deliveryBoyId === "none" ? undefined : editModalData.deliveryBoyId,
+     };
 
     await dispatch(updateSubscription(editSubscription._id, payload));
     dispatch(fetchSubscriptions());
@@ -165,16 +165,16 @@ const SubscriptionsPage = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="deliveryBoy" className="mb-2">
+                    <Label htmlFor="deliveryBoyId" className="mb-2">
                       Delivery Partner
                     </Label>
                     <Select
-                      value={editModalData.deliveryBoy || "none"}
+                      value={editModalData.deliveryBoyId || "none"}
                       onValueChange={(value) =>
-                        handleModalChange("deliveryBoy", value)
+                        handleModalChange("deliveryBoyId", value)
                       }
                     >
-                      <SelectTrigger id="deliveryBoy">
+                      <SelectTrigger id="deliveryBoyId">
                         <SelectValue placeholder="Select Delivery Partner" />
                       </SelectTrigger>
                       <SelectContent>

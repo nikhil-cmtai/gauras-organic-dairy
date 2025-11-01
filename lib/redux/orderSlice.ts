@@ -18,7 +18,12 @@ export interface OrderProduct {
 }
 
 // Order status options
-export type OrderStatus = "Pending" | "Delivered" | "Cancelled" | "Accepted";
+export enum OrderStatus {
+  Pending = "Pending",
+  Delivered = "Delivered",
+  Cancelled = "Cancelled",
+  Accepted = "Accepted",
+}
 export type PaymentMode = "Wallet" | "Razorpay";
 export type RefundStatus = "Not Initiated" | "Processing" | "Refunded" | "Failed";
 
@@ -144,7 +149,7 @@ export const updateOrder = (
 ) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await apiClient.put(`/orders/${id}`, orderData);
+    const response = await apiClient.put(`/orders/order/${id}/status`, orderData);
     dispatch(setLoading(false));
     if (response.status === 200) {
       return response.data;
