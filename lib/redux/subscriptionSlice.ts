@@ -198,7 +198,7 @@ export const updateSubscription = (id: string, subscriptionData: Partial<Subscri
 ) => {
   dispatch(setLoading(true));
   try {
-    const response = await apiClient.put(`/subscriptions/${id}`, subscriptionData);
+    const response = await apiClient.put(`/subscriptions/assign-delivery-boy/${id}`, subscriptionData);
     dispatch(setLoading(false));
     if (response.status === 200) {
       return response.data;

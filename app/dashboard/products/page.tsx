@@ -71,6 +71,7 @@ const ProductsPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [originalImageUrls, setOriginalImageUrls] = useState<string[]>([]); // Track original images when editing
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -115,6 +116,8 @@ const ProductsPage = () => {
         setImagePreviews(newPreviews);
       }
     }
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -171,14 +174,17 @@ const ProductsPage = () => {
     // Handle imageUrl - can be string, array of strings, or null
     let imageUrls: (File | string)[] = [];
     let previews: string[] = [];
+    let originalUrls: string[] = [];
     
     if (prod.imageUrl) {
       if (typeof prod.imageUrl === "string") {
         imageUrls = [prod.imageUrl];
         previews = [prod.imageUrl];
+        originalUrls = [prod.imageUrl];
       } else if (Array.isArray(prod.imageUrl)) {
         imageUrls = prod.imageUrl as string[];
         previews = prod.imageUrl as string[];
+        originalUrls = prod.imageUrl as string[];
       }
     }
     
@@ -195,6 +201,7 @@ const ProductsPage = () => {
       imageUrl: imageUrls,
     });
     setImagePreviews(previews);
+    setOriginalImageUrls(originalUrls); // Store original images for comparison
     setDialogOpen(true);
   };
 
@@ -216,11 +223,16 @@ const ProductsPage = () => {
       
       formData.append("stock", form.stock || "0");
       
-      // Append multiple images
+      // For images: only send new Files, keep existing string URLs as-is
+      // Existing images (strings) that are still in the form will be preserved
+      // New images (Files) will be added
+      // Removed images (not in form.imageUrl) won't be sent, so backend will remove them
       form.imageUrl.forEach((img) => {
         if (img instanceof File) {
+          // New file - append to FormData
           formData.append("imageUrl", img);
-        } else if (typeof img === "string") {
+        } else if (typeof img === "string" && originalImageUrls.includes(img)) {
+          // Existing image that wasn't removed - append URL to keep it
           formData.append("imageUrl", img);
         }
       });
@@ -239,6 +251,7 @@ const ProductsPage = () => {
       setEditId(null);
       setForm(emptyForm);
       setImagePreviews([]);
+      setOriginalImageUrls([]);
       setDialogOpen(false);
       setActionLoadingId(null);
       dispatch(fetchProducts());
@@ -274,11 +287,12 @@ const ProductsPage = () => {
             });
             setForm(emptyForm);
             setImagePreviews([]);
+            setOriginalImageUrls([]);
             setEditId(null);
           }
         }}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditId(null); setForm(emptyForm); setImagePreviews([]); }}>Add Product</Button>
+            <Button onClick={() => { setEditId(null); setForm(emptyForm); setImagePreviews([]); setOriginalImageUrls([]); }}>Add Product</Button>
           </DialogTrigger>
           <DialogContent className="overflow-y-auto max-h-[90vh] w-[95vw] max-w-4xl">
             <DialogHeader>
@@ -525,7 +539,8 @@ const ProductsPage = () => {
                     });
                     setEditId(null); 
                     setForm(emptyForm); 
-                    setImagePreviews([]); 
+                    setImagePreviews([]);
+                    setOriginalImageUrls([]);
                   }}>Cancel</Button>
                 </DialogClose>
               </DialogFooter>

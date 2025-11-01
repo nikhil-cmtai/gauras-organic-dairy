@@ -152,7 +152,7 @@ export const updateUser = (
 ) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await apiClient.put(`/users/${id}`, updates);
+    const response = await apiClient.put(`/users/profile/${id}`, updates);
     dispatch(setLoading(false));
     if (response.status === 200) {
       return response.data;
