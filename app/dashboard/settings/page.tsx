@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchSettings,
   updateBasicSettings,
-  updateBannerImage,
+  addBannerImage,
   removeBannerImage,
   selectSettings,
   selectSettingsLoading,
@@ -32,7 +32,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import Image from "next/image";
+import NextImage from "next/image";
 
 type CouponForm = {
   name: string;
@@ -66,6 +66,8 @@ const SettingsPage = () => {
   const [newImageUrl, setNewImageUrl] = useState("");
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -127,18 +129,69 @@ const SettingsPage = () => {
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedImageFile(file);
-      // Create preview
+      // Clear previous error and dimensions
+      setImageError(null);
+      setImageDimensions(null);
+      
+      // Check file size (4 MB = 4 * 1024 * 1024 bytes)
+      const maxSizeInBytes = 4 * 1024 * 1024; // 4 MB
+      if (file.size > maxSizeInBytes) {
+        const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        setImageError(`Image size should not exceed 4 MB. Current size: ${fileSizeInMB} MB`);
+        setSelectedImageFile(null);
+        setImagePreview(null);
+        // Reset file input
+        const fileInput = document.getElementById("image-file") as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = "";
+        }
+        return;
+      }
+      
+      // Check image dimensions using browser's native Image constructor
+      const img = new window.Image();
       const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
+      
+      img.onload = () => {
+        const maxDimension = 800;
+        if (img.width > maxDimension || img.height > maxDimension) {
+          setImageError(`Image dimensions should not exceed 800x800 pixels. Current size: ${img.width}x${img.height}px`);
+          setSelectedImageFile(null);
+          setImagePreview(null);
+          setImageDimensions(null);
+          URL.revokeObjectURL(previewUrl);
+          // Reset file input
+          const fileInput = document.getElementById("image-file") as HTMLInputElement;
+          if (fileInput) {
+            fileInput.value = "";
+          }
+        } else {
+          setSelectedImageFile(file);
+          setImagePreview(previewUrl);
+          setImageDimensions({ width: img.width, height: img.height });
+        }
+      };
+      
+      img.onerror = () => {
+        setImageError("Failed to load image. Please try again.");
+        setImageDimensions(null);
+        URL.revokeObjectURL(previewUrl);
+      };
+      
+      img.src = previewUrl;
     }
   };
 
   const handleAddImageUrl = async () => {
+    // Check if there's a validation error
+    if (imageError) {
+      return;
+    }
+
     if (selectedImageFile) {
       // Upload file
       setActionLoadingId("addImage");
-      const result = await dispatch(updateBannerImage(selectedImageFile));
+      const result = await dispatch(addBannerImage(selectedImageFile));
       if (result) {
         // Clean up
         if (imagePreview) {
@@ -147,6 +200,8 @@ const SettingsPage = () => {
         setSelectedImageFile(null);
         setImagePreview(null);
         setNewImageUrl("");
+        setImageError(null);
+        setImageDimensions(null);
         // Reset file input
         const fileInput = document.getElementById("image-file") as HTMLInputElement;
         if (fileInput) {
@@ -158,9 +213,10 @@ const SettingsPage = () => {
     } else if (newImageUrl.trim()) {
       // Use URL
       setActionLoadingId("addImage");
-      const result = await dispatch(updateBannerImage(newImageUrl.trim()));
+      const result = await dispatch(addBannerImage(newImageUrl.trim()));
       if (result) {
         setNewImageUrl("");
+        setImageError(null);
         dispatch(fetchSettings());
       }
       setActionLoadingId(null);
@@ -301,9 +357,19 @@ const SettingsPage = () => {
                   onChange={handleImageFileChange}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80 cursor-pointer"
                 />
+                {imageError && (
+                  <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+                    {imageError}
+                  </div>
+                )}
+                {imageDimensions && !imageError && (
+                  <span className="mt-2 block text-sm font-medium text-gray-700">
+                    Dimensions: {imageDimensions.width} × {imageDimensions.height}px
+                  </span>
+                )}
                 {imagePreview && (
                   <div className="mt-2">
-                    <Image
+                    <NextImage
                       src={imagePreview}
                       alt="Preview"
                       width={200}
@@ -321,6 +387,8 @@ const SettingsPage = () => {
                         }
                         setSelectedImageFile(null);
                         setImagePreview(null);
+                        setImageError(null);
+                        setImageDimensions(null);
                       }}
                     >
                       Clear
@@ -351,7 +419,7 @@ const SettingsPage = () => {
                 <Button 
                   type="button" 
                   onClick={handleAddImageUrl}
-                  disabled={actionLoadingId === "addImage" || (!selectedImageFile && !newImageUrl.trim())}
+                  disabled={actionLoadingId === "addImage" || (!selectedImageFile && !newImageUrl.trim()) || !!imageError}
                 >
                   {actionLoadingId === "addImage" && (
                     <Loader className="animate-spin mr-2" size={18} />
@@ -364,7 +432,7 @@ const SettingsPage = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {loginImageUrls.map((url, index) => (
                   <div key={index} className="relative">
-                    <Image
+                    <NextImage
                       src={url}
                       alt={`Login Image ${index + 1}`}
                       width={200}

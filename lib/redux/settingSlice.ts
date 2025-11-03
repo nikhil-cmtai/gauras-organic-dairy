@@ -105,11 +105,10 @@ export const updateBasicSettings = (
   }
 };
 
-// Update banner/login images (separate API endpoint with index values)
-// Accepts either File (for upload) or string (for URL), and optional index
-export const updateBannerImage = (
-  image: File | string,
-  index?: number
+// Add banner/login image (separate API endpoint)
+// Accepts either File (for upload) or string (for URL)
+export const addBannerImage = (
+  image: File | string
 ) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
@@ -119,18 +118,13 @@ export const updateBannerImage = (
       // File upload - use FormData
       const formData = new FormData();
       formData.append("image", image);
-      if (index !== undefined) {
-        formData.append("index", index.toString());
-      }
       
       response = await apiClient.post(`/settings/banner`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
     } else {
       // URL string - send as JSON
-      const payload = index !== undefined 
-        ? { imageUrl: image, index }
-        : { imageUrl: image };
+      const payload = { imageUrl: image };
       response = await apiClient.post(`/settings/banner`, payload);
     }
     
@@ -139,7 +133,7 @@ export const updateBannerImage = (
       dispatch(setSettings(response.data.data ?? response.data));
       return response.data;
     } else {
-      dispatch(setError(response.data.message || "Failed to update banner image"));
+      dispatch(setError(response.data.message || "Failed to add banner image"));
       return null;
     }
   } catch (error: unknown) {
@@ -153,13 +147,13 @@ export const updateBannerImage = (
   }
 };
 
-// Remove banner/login image by index
+// Remove banner/login image by index (index sent in URL params)
 export const removeBannerImage = (
   index: number
 ) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await apiClient.post(`/settings/banner`, { index, action: "remove" });
+    const response = await apiClient.delete(`/settings/banner/${index}`);
     dispatch(setLoading(false));
     if (response.status === 200) {
       dispatch(setSettings(response.data.data ?? response.data));
