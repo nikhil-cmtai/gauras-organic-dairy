@@ -176,7 +176,7 @@ export const updateHome = (id: string, homeData: Partial<Home> | FormData) => as
     } else {
       config = { headers: { "Content-Type": "application/json" } };
     }
-    const response = await apiClient.put(
+    const response = await apiClient.post(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`,
       payload,
       config
