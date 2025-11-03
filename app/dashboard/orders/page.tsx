@@ -24,14 +24,14 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 
 type OrderEditData = {
   status: OrderStatus;
 };
 
 const OrdersPage = () => {
-  const router = useRouter();
+  // const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   
   const orders = useSelector(selectOrders);
@@ -82,10 +82,10 @@ const OrdersPage = () => {
     // This would need to fetch user details using order.user (user ID)
   };
 
-  const handleViewInvoice = (order: Order) => {
-    localStorage.setItem('currentOrder', JSON.stringify(order));
-    router.push('/dashboard/orders/print-invoice');
-  };
+  // const handleViewInvoice = (order: Order) => {
+  //   localStorage.setItem('currentOrder', JSON.stringify(order));
+  //   router.push('/dashboard/orders/print-invoice');
+  // };
 
   const getUserName = (userId: string) =>
     users.find((u: User) => u._id === userId)?.name || userId || "Unknown";
