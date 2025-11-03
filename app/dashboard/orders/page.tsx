@@ -209,9 +209,9 @@ const OrdersPage = () => {
                             <Button size="sm" variant="outline" onClick={() => openEditModal(order)}>
                               Edit
                             </Button>
-                            <Button size="sm" variant="default" onClick={() => handleViewInvoice(order)}>
+                            {/* <Button size="sm" variant="default" onClick={() => handleViewInvoice(order)}>
                               Invoice
-                            </Button>
+                            </Button> */}
                           </div>
                         </td>
                       </tr>

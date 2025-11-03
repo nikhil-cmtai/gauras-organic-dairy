@@ -79,20 +79,19 @@ export const fetchSettings = () => async (dispatch: Dispatch) => {
   }
 };
 
-// Update settings (expects updates object, PUT to /settings/:id)
-export const updateSettings = (
-  id: string,
+// Update basic settings and coupons (one API endpoint)
+export const updateBasicSettings = (
   updates: Partial<Settings>
 ) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    const response = await apiClient.put(`/settings/${id}`, updates);
+    const response = await apiClient.post(`/settings/`, updates);
     dispatch(setLoading(false));
     if (response.status === 200) {
       dispatch(setSettings(response.data.data ?? response.data));
       return response.data;
     } else {
-      dispatch(setError(response.data.message || "Failed to update settings"));
+      dispatch(setError(response.data.message || "Failed to update basic settings"));
       return null;
     }
   } catch (error: unknown) {
@@ -106,21 +105,67 @@ export const updateSettings = (
   }
 };
 
-// Add a coupon (PATCH to /settings/:id/coupons or PUT whole doc, as per your API)
-export const addCoupon = (
-  settingsId: string,
-  coupon: Coupon
+// Update banner/login images (separate API endpoint with index values)
+// Accepts either File (for upload) or string (for URL), and optional index
+export const updateBannerImage = (
+  image: File | string,
+  index?: number
 ) => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
-    // Here we assume you PATCH coupons array, adjust as per your API
-    const response = await apiClient.patch(`/settings/${settingsId}/coupons`, { coupon });
+    let response;
+    
+    if (image instanceof File) {
+      // File upload - use FormData
+      const formData = new FormData();
+      formData.append("image", image);
+      if (index !== undefined) {
+        formData.append("index", index.toString());
+      }
+      
+      response = await apiClient.post(`/settings/banner`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+    } else {
+      // URL string - send as JSON
+      const payload = index !== undefined 
+        ? { imageUrl: image, index }
+        : { imageUrl: image };
+      response = await apiClient.post(`/settings/banner`, payload);
+    }
+    
     dispatch(setLoading(false));
-    if (response.status === 200 || response.status === 201) {
+    if (response.status === 200) {
       dispatch(setSettings(response.data.data ?? response.data));
       return response.data;
     } else {
-      dispatch(setError(response.data.message || "Failed to add coupon"));
+      dispatch(setError(response.data.message || "Failed to update banner image"));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
+// Remove banner/login image by index
+export const removeBannerImage = (
+  index: number
+) => async (dispatch: Dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const response = await apiClient.post(`/settings/banner`, { index, action: "remove" });
+    dispatch(setLoading(false));
+    if (response.status === 200) {
+      dispatch(setSettings(response.data.data ?? response.data));
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to remove banner image"));
       return null;
     }
   } catch (error: unknown) {

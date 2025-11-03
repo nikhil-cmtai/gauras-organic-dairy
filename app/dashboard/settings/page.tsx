@@ -4,8 +4,9 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchSettings,
-  updateSettings,
-  addCoupon,
+  updateBasicSettings,
+  updateBannerImage,
+  removeBannerImage,
   selectSettings,
   selectSettingsLoading,
   selectSettingsError,
@@ -63,6 +64,8 @@ const SettingsPage = () => {
   const [couponDialogOpen, setCouponDialogOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -80,6 +83,15 @@ const SettingsPage = () => {
     }
   }, [settings]);
 
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
@@ -95,7 +107,7 @@ const SettingsPage = () => {
   };
 
   const handleSave = async () => {
-    if (!settings?._id) return;
+    if (!settings) return;
     setSaving(true);
     setActionLoadingId("save");
 
@@ -103,29 +115,69 @@ const SettingsPage = () => {
       gst: Number(form.gst) || 0,
       deliveryCharge: Number(form.deliveryCharge) || 0,
       extraCharge: Number(form.extraCharge) || 0,
-      loginImageUrls: loginImageUrls,
+      coupons: settings.coupons || [],
     };
 
-    await dispatch(updateSettings(settings._id, updates));
+    await dispatch(updateBasicSettings(updates));
     setActionLoadingId(null);
     setSaving(false);
     dispatch(fetchSettings());
   };
 
-  const handleAddImageUrl = () => {
-    if (newImageUrl.trim()) {
-      setLoginImageUrls([...loginImageUrls, newImageUrl.trim()]);
-      setNewImageUrl("");
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImageFile(file);
+      // Create preview
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
     }
   };
 
-  const handleRemoveImageUrl = (index: number) => {
-    const newUrls = loginImageUrls.filter((_, i) => i !== index);
-    setLoginImageUrls(newUrls);
+  const handleAddImageUrl = async () => {
+    if (selectedImageFile) {
+      // Upload file
+      setActionLoadingId("addImage");
+      const result = await dispatch(updateBannerImage(selectedImageFile));
+      if (result) {
+        // Clean up
+        if (imagePreview) {
+          URL.revokeObjectURL(imagePreview);
+        }
+        setSelectedImageFile(null);
+        setImagePreview(null);
+        setNewImageUrl("");
+        // Reset file input
+        const fileInput = document.getElementById("image-file") as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = "";
+        }
+        dispatch(fetchSettings());
+      }
+      setActionLoadingId(null);
+    } else if (newImageUrl.trim()) {
+      // Use URL
+      setActionLoadingId("addImage");
+      const result = await dispatch(updateBannerImage(newImageUrl.trim()));
+      if (result) {
+        setNewImageUrl("");
+        dispatch(fetchSettings());
+      }
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRemoveImageUrl = async (index: number) => {
+    setActionLoadingId(`removeImage-${index}`);
+    const result = await dispatch(removeBannerImage(index));
+    if (result) {
+      dispatch(fetchSettings());
+    }
+    setActionLoadingId(null);
   };
 
   const handleAddCoupon = async () => {
-    if (!settings?._id) return;
+    if (!settings) return;
     if (!couponForm.name || !couponForm.discountTitle || !couponForm.discountAmount || !couponForm.discountType) {
       return;
     }
@@ -138,24 +190,40 @@ const SettingsPage = () => {
       discountType: couponForm.discountType as "percentage" | "fixed",
     };
 
-    await dispatch(addCoupon(settings._id, coupon));
-    setCouponForm(emptyCouponForm);
-    setCouponDialogOpen(false);
+    const updatedCoupons = [...(settings.coupons || []), coupon];
+    const updates: Partial<Settings> = {
+      gst: settings.gst || 0,
+      deliveryCharge: settings.deliveryCharge || 0,
+      extraCharge: settings.extraCharge || 0,
+      coupons: updatedCoupons,
+    };
+
+    const result = await dispatch(updateBasicSettings(updates));
+    if (result) {
+      setCouponForm(emptyCouponForm);
+      setCouponDialogOpen(false);
+      dispatch(fetchSettings());
+    }
     setActionLoadingId(null);
-    dispatch(fetchSettings());
   };
 
   const handleRemoveCoupon = async (index: number) => {
-    if (!settings?._id || !settings.coupons) return;
+    if (!settings || !settings.coupons) return;
 
+    setActionLoadingId(`removeCoupon-${index}`);
     const updatedCoupons = settings.coupons.filter((_, i) => i !== index);
-    await dispatch(
-      updateSettings(settings._id, {
-        ...settings,
-        coupons: updatedCoupons,
-      })
-    );
-    dispatch(fetchSettings());
+    const updates: Partial<Settings> = {
+      gst: settings.gst || 0,
+      deliveryCharge: settings.deliveryCharge || 0,
+      extraCharge: settings.extraCharge || 0,
+      coupons: updatedCoupons,
+    };
+
+    const result = await dispatch(updateBasicSettings(updates));
+    if (result) {
+      dispatch(fetchSettings());
+    }
+    setActionLoadingId(null);
   };
 
   return (
@@ -220,21 +288,77 @@ const SettingsPage = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Login Images</h2>
             </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Image URL"
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddImageUrl();
-                  }
-                }}
-              />
-              <Button type="button" onClick={handleAddImageUrl}>
-                Add Image
-              </Button>
+            <div className="space-y-3">
+              {/* File Upload */}
+              <div>
+                <Label htmlFor="image-file" className="mb-2 block">
+                  Choose Image File
+                </Label>
+                <input
+                  id="image-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80 cursor-pointer"
+                />
+                {imagePreview && (
+                  <div className="mt-2">
+                    <Image
+                      src={imagePreview}
+                      alt="Preview"
+                      width={200}
+                      height={200}
+                      className="h-32 w-auto object-cover rounded border"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        if (imagePreview) {
+                          URL.revokeObjectURL(imagePreview);
+                        }
+                        setSelectedImageFile(null);
+                        setImagePreview(null);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Or URL Input */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="image-url" className="mb-2 block">
+                    Or Enter Image URL
+                  </Label>
+                  <Input
+                    id="image-url"
+                    placeholder="Image URL"
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddImageUrl();
+                      }
+                    }}
+                  />
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={handleAddImageUrl}
+                  disabled={actionLoadingId === "addImage" || (!selectedImageFile && !newImageUrl.trim())}
+                >
+                  {actionLoadingId === "addImage" && (
+                    <Loader className="animate-spin mr-2" size={18} />
+                  )}
+                  Add Image
+                </Button>
+              </div>
             </div>
             {loginImageUrls.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -253,8 +377,13 @@ const SettingsPage = () => {
                       size="sm"
                       className="absolute top-2 right-2"
                       onClick={() => handleRemoveImageUrl(index)}
+                      disabled={actionLoadingId === `removeImage-${index}`}
                     >
-                      <X size={14} />
+                      {actionLoadingId === `removeImage-${index}` ? (
+                        <Loader className="animate-spin" size={14} />
+                      ) : (
+                        <X size={14} />
+                      )}
                     </Button>
                   </div>
                 ))}
@@ -307,7 +436,11 @@ const SettingsPage = () => {
                             variant="destructive"
                             size="sm"
                             onClick={() => handleRemoveCoupon(index)}
+                            disabled={actionLoadingId === `removeCoupon-${index}`}
                           >
+                            {actionLoadingId === `removeCoupon-${index}` ? (
+                              <Loader className="animate-spin mr-2" size={14} />
+                            ) : null}
                             Remove
                           </Button>
                         </td>
