@@ -1,5 +1,5 @@
-import { createSlice, Dispatch } from "@reduxjs/toolkit";
-import { RootState } from "../store";
+import { createSlice } from "@reduxjs/toolkit";
+import { RootState, AppDispatch } from "../store";
 import apiClient from "../api";
 
 // Banner, FeaturedCategory, Home interfaces
@@ -13,7 +13,14 @@ export interface Banner {
 export interface FeaturedCategory {
   _id?: string;
   title: string;
-  products: string[];
+  products: string[] | Array<{
+    _id: string;
+    name: string;
+    category?: string;
+    price?: number[];
+    imageUrl?: string;
+    [key: string]: unknown;
+  }>;
 }
 
 export interface Home {
@@ -81,7 +88,7 @@ export const {
 } = homeSlice.actions;
 
 // Fetch all Home documents
-export const fetchHomes = () => async (dispatch: Dispatch) => {
+export const fetchHomes = () => async (dispatch: AppDispatch) => {
   dispatch(setLoading(true));
   try {
     const response = await apiClient.get(
@@ -111,7 +118,7 @@ export const fetchHomes = () => async (dispatch: Dispatch) => {
 };
 
 // Fetch a Home by id
-export const fetchHomeById = (id: string) => async (dispatch: Dispatch) => {
+export const fetchHomeById = (id: string) => async (dispatch: AppDispatch) => {
   dispatch(setLoading(true));
   try {
     const response = await apiClient.get(
@@ -134,7 +141,7 @@ export const fetchHomeById = (id: string) => async (dispatch: Dispatch) => {
 };
 
 export const addHome = (home: Partial<Home> | FormData) => async (
-  dispatch: Dispatch
+  dispatch: AppDispatch
 ) => {
   dispatch(setLoading(true));
   try {
@@ -164,8 +171,8 @@ export const addHome = (home: Partial<Home> | FormData) => async (
   }
 };
 
-export const updateHome = (id: string, homeData: Partial<Home> | FormData) => async (
-  dispatch: Dispatch
+export const updateHome = ( homeData: Partial<Home> | FormData) => async (
+  dispatch: AppDispatch
 ) => {
   dispatch(setLoading(true));
   try {
@@ -176,8 +183,8 @@ export const updateHome = (id: string, homeData: Partial<Home> | FormData) => as
     } else {
       config = { headers: { "Content-Type": "application/json" } };
     }
-    const response = await apiClient.put(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/${id}`,
+    const response = await apiClient.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home`,
       payload,
       config
     );
@@ -199,7 +206,7 @@ export const updateHome = (id: string, homeData: Partial<Home> | FormData) => as
   }
 };
 
-export const deleteHome = (id: string) => async (dispatch: Dispatch) => {
+export const deleteHome = (id: string) => async (dispatch: AppDispatch) => {
   dispatch(setLoading(true));
   try {
     const response = await apiClient.delete(
@@ -219,8 +226,226 @@ export const deleteHome = (id: string) => async (dispatch: Dispatch) => {
   }
 };
 
+// Banner CRUD operations using home/banner endpoint
+export const addBanner = (banner: Partial<Banner> | FormData) => async (
+  dispatch: AppDispatch
+) => {
+  dispatch(setLoading(true));
+  try {
+    let config = {};
+    if (typeof FormData !== "undefined" && banner instanceof FormData) {
+      config = { headers: { "Content-Type": "multipart/form-data" } };
+    }
+    const response = await apiClient.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/banner`,
+      banner,
+      config
+    );
+    dispatch(setLoading(false));
+    if (response.status === 201 || response.status === 200) {
+      // Refresh home data
+      await dispatch(fetchHomes());
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to add Banner document."));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
+export const updateBanner = (id: string, banner: Partial<Banner> | FormData) => async (
+  dispatch: AppDispatch
+) => {
+  dispatch(setLoading(true));
+  try {
+    let config = {};
+    if (typeof FormData !== "undefined" && banner instanceof FormData) {
+      config = { headers: { "Content-Type": "multipart/form-data" } };
+      // Add ID to FormData if it's FormData
+      if (banner instanceof FormData) {
+        banner.append("_id", id);
+      }
+    } else {
+      // Add ID to payload
+      const payload = { ...banner, _id: id };
+      banner = payload;
+    }
+    const response = await apiClient.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/banner`,
+      banner,
+      config
+    );
+    dispatch(setLoading(false));
+    if (response.status === 201 || response.status === 200) {
+      // Refresh home data
+      await dispatch(fetchHomes());
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to update Banner document."));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
+export const deleteBanner = (id: string) => async (dispatch: AppDispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const response = await apiClient.delete(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/banner/${id}`
+    );
+    dispatch(setLoading(false));
+    if (response.status === 200) {
+      // Refresh home data
+      await dispatch(fetchHomes());
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to delete Banner document."));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
+// Section CRUD operations using home/section endpoint
+export const addSection = (section: Partial<FeaturedCategory>) => async (
+  dispatch: AppDispatch
+) => {
+  dispatch(setLoading(true));
+  try {
+    // Always send as JSON, not FormData
+    const config = { headers: { "Content-Type": "application/json" } };
+    const response = await apiClient.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/section`,
+      section,
+      config
+    );
+    dispatch(setLoading(false));
+    if (response.status === 201 || response.status === 200) {
+      // Refresh home data
+      await dispatch(fetchHomes());
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to add Section document."));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
+export const updateSection = (id: string, section: Partial<FeaturedCategory>) => async (
+  dispatch: AppDispatch
+) => {
+  dispatch(setLoading(true));
+  try {
+    // Always send as JSON, not FormData
+    const config = { headers: { "Content-Type": "application/json" } };
+    // Add ID to payload
+    const payload = { ...section, _id: id };
+    const response = await apiClient.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/section`,
+      payload,
+      config
+    );
+    dispatch(setLoading(false));
+    if (response.status === 201 || response.status === 200) {
+      // Refresh home data
+      await dispatch(fetchHomes());
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to update Section document."));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
+export const deleteSection = (id: string) => async (dispatch: AppDispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const response = await apiClient.delete(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/section/${id}`
+    );
+    dispatch(setLoading(false));
+    if (response.status === 200) {
+      // Refresh home data
+      await dispatch(fetchHomes());
+      return response.data;
+    } else {
+      dispatch(setError(response.data.message || "Failed to delete Section document."));
+      return null;
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+    dispatch(setLoading(false));
+    return null;
+  }
+};
+
 // Selectors
 export const selectHomes = (state: RootState) => state.homes.data;
+export const selectBanners = (state: RootState): Banner[] => {
+  // Extract all banners from all home entries
+  const homes = state.homes.data;
+  const allBanners: Banner[] = [];
+  homes.forEach((home) => {
+    if (Array.isArray(home.banners)) {
+      allBanners.push(...home.banners);
+    }
+  });
+  return allBanners;
+};
+export const selectSections = (state: RootState): FeaturedCategory[] => {
+  // Extract all sections from all home entries
+  const homes = state.homes.data;
+  const allSections: FeaturedCategory[] = [];
+  homes.forEach((home) => {
+    if (Array.isArray(home.featuredSections)) {
+      allSections.push(...home.featuredSections);
+    }
+  });
+  return allSections;
+};
 export const selectHomeById = (state: RootState) => state.homes.selectedHome;
 export const selectLoading = (state: RootState) => state.homes.loading;
 export const selectError = (state: RootState) => state.homes.error;

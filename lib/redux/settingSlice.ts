@@ -57,6 +57,7 @@ const settingsSlice = createSlice({
 export const { setSettings, setLoading, setError, clearSettings } = settingsSlice.actions;
 
 // Fetch settings (assumes a single settings document)
+// If settings don't exist, creates default settings
 export const fetchSettings = () => async (dispatch: Dispatch) => {
   dispatch(setLoading(true));
   try {
@@ -66,16 +67,65 @@ export const fetchSettings = () => async (dispatch: Dispatch) => {
       const result = Array.isArray(response.data.data)
         ? response.data.data[0]
         : response.data.data ?? response.data;
-      dispatch(setSettings(result));
+      
+      // If no settings exist, create default settings
+      if (!result || (Array.isArray(result) && result.length === 0)) {
+        const defaultSettings: Partial<Settings> = {
+          gst: 0,
+          deliveryCharge: 0,
+          extraCharge: 0,
+          coupons: [],
+          loginImageUrls: [],
+        };
+        
+        // Create settings
+        const createResponse = await apiClient.post(`/settings/`, defaultSettings);
+        if (createResponse.status === 200 || createResponse.status === 201) {
+          const createdSettings = createResponse.data.data ?? createResponse.data;
+          dispatch(setSettings(createdSettings));
+        } else {
+          dispatch(setError("Failed to create default settings"));
+        }
+      } else {
+        dispatch(setSettings(result));
+      }
     } else {
       dispatch(setError(response.data.message || "Failed to fetch settings"));
     }
   } catch (error: unknown) {
-    const message =
-      typeof error === "object" && error && "message" in error
-        ? (error as { message?: string }).message
-        : String(error);
-    dispatch(setError(message || "Unknown error"));
+    // If 404 or settings not found, create default settings
+    const errorObj = error as { response?: { status?: number } };
+    if (errorObj.response?.status === 404 || errorObj.response?.status === 400) {
+      try {
+        const defaultSettings: Partial<Settings> = {
+          gst: 0,
+          deliveryCharge: 0,
+          extraCharge: 0,
+          coupons: [],
+          loginImageUrls: [],
+        };
+        
+        const createResponse = await apiClient.post(`/settings/`, defaultSettings);
+        if (createResponse.status === 200 || createResponse.status === 201) {
+          const createdSettings = createResponse.data.data ?? createResponse.data;
+          dispatch(setSettings(createdSettings));
+        } else {
+          dispatch(setError("Failed to create default settings"));
+        }
+      } catch (createError) {
+        const message =
+          typeof createError === "object" && createError && "message" in createError
+            ? (createError as { message?: string }).message
+            : String(createError);
+        dispatch(setError(message || "Failed to create settings"));
+      }
+    } else {
+      const message =
+        typeof error === "object" && error && "message" in error
+          ? (error as { message?: string }).message
+          : String(error);
+      dispatch(setError(message || "Unknown error"));
+    }
   }
 };
 
