@@ -269,22 +269,18 @@ export const updateBanner = (id: string, banner: Partial<Banner> | FormData) => 
     let config = {};
     if (typeof FormData !== "undefined" && banner instanceof FormData) {
       config = { headers: { "Content-Type": "multipart/form-data" } };
-      // Add ID to FormData if it's FormData
-      if (banner instanceof FormData) {
-        banner.append("_id", id);
-      }
     } else {
       // Add ID to payload
       const payload = { ...banner, _id: id };
       banner = payload;
     }
-    const response = await apiClient.post(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/banner`,
+    const response = await apiClient.put(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/home/banner/${id}`,
       banner,
       config
     );
     dispatch(setLoading(false));
-    if (response.status === 201 || response.status === 200) {
+    if (response.status === 200) {
       // Refresh home data
       await dispatch(fetchHomes());
       return response.data;
