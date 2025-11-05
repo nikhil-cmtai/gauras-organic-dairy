@@ -465,10 +465,10 @@ const HomePage = () => {
   };
 
   return (
-    <div className="w-full mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Home Entries</h1>
-        <div className="flex gap-2">
+    <div className="w-full mx-auto px-2 sm:px-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Home Entries</h1>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {/* Banner Management Dialog */}
           <Dialog open={bannerDialogOpen} onOpenChange={(open) => {
             setBannerDialogOpen(open);
@@ -481,9 +481,9 @@ const HomePage = () => {
                 Manage Banners
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full max-w-lg">
               <DialogHeader>
-                <DialogTitle>{editBannerId ? "Edit Banner" : "Add Banner"}</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">{editBannerId ? "Edit Banner" : "Add Banner"}</DialogTitle>
               </DialogHeader>
               <form
                 onSubmit={e => {
@@ -504,12 +504,12 @@ const HomePage = () => {
                     }}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80 mt-2"
                   />
-                  {bannerForm.imageUrl && (
+                  {bannerForm.imageUrl && bannerForm.imageUrl.trim() !== "" && (
                     <div className="mt-2">
                       <Image 
                         src={bannerForm.imageUrl} 
                         alt="Banner Preview" 
-                        className="h-32 w-64 object-cover rounded" 
+                        className="h-32 w-full sm:w-64 object-cover rounded" 
                         width={256} 
                         height={128} 
                       />
@@ -536,9 +536,10 @@ const HomePage = () => {
                     required
                   />
                 </div>
-                <DialogFooter>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
                   <Button 
                     type="submit" 
+                    className="w-full sm:w-auto"
                     disabled={!!(loading || actionLoadingId === "addBanner" || (editBannerId && actionLoadingId === editBannerId))}
                   >
                     {(loading || actionLoadingId === "addBanner" || (editBannerId && actionLoadingId === editBannerId)) && (
@@ -547,7 +548,7 @@ const HomePage = () => {
                     {editBannerId ? "Update" : "Add"}
                   </Button>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline" onClick={() => { resetBannerForm(); }}>Cancel</Button>
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => { resetBannerForm(); }}>Cancel</Button>
                   </DialogClose>
                 </DialogFooter>
               </form>
@@ -566,9 +567,9 @@ const HomePage = () => {
                 Manage Sections
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full max-w-lg">
               <DialogHeader>
-                <DialogTitle>{editSectionId ? "Edit Section" : "Add Section"}</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">{editSectionId ? "Edit Section" : "Add Section"}</DialogTitle>
               </DialogHeader>
               <form
                 onSubmit={e => {
@@ -622,9 +623,10 @@ const HomePage = () => {
                     </p>
                   )}
                 </div>
-                <DialogFooter>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
                   <Button 
                     type="submit" 
+                    className="w-full sm:w-auto"
                     disabled={!!(loading || actionLoadingId === "addSection" || (editSectionId && actionLoadingId === editSectionId))}
                   >
                     {(loading || actionLoadingId === "addSection" || (editSectionId && actionLoadingId === editSectionId)) && (
@@ -633,7 +635,7 @@ const HomePage = () => {
                     {editSectionId ? "Update" : "Add"}
                   </Button>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline" onClick={() => { resetSectionForm(); }}>Cancel</Button>
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => { resetSectionForm(); }}>Cancel</Button>
                   </DialogClose>
                 </DialogFooter>
               </form>
@@ -650,9 +652,9 @@ const HomePage = () => {
             <DialogTrigger asChild>
               <Button onClick={() => { resetForm(); }}>Add Home</Button>
             </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full max-w-4xl">
             <DialogHeader>
-              <DialogTitle>{editId ? "Edit Home" : "Add Home"}</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">{editId ? "Edit Home" : "Add Home"}</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={e => {
@@ -663,22 +665,22 @@ const HomePage = () => {
             >
               {/* Banners Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-lg font-semibold">Banners</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addBannerToForm}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <Label className="text-base sm:text-lg font-semibold">Banners</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addBannerToForm} className="w-full sm:w-auto">
                     + Add Banner
                   </Button>
                 </div>
                 {form.banners.map((banner, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <Label>Banner {index + 1}</Label>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeBanner(index)}>
+                  <div key={index} className="border rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <Label className="text-sm sm:text-base">Banner {index + 1}</Label>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeBanner(index)} className="w-full sm:w-auto">
                         Remove
                       </Button>
                     </div>
                     <div>
-                      <Label htmlFor={`banner-image-${index}`} className="mb-2">Image</Label>
+                      <Label htmlFor={`banner-image-${index}`} className="mb-2 text-sm sm:text-base">Image</Label>
                       <input
                         id={`banner-image-${index}`}
                         type="file"
@@ -687,14 +689,14 @@ const HomePage = () => {
                           const file = e.target.files?.[0];
                           if (file) handleBannerImageChangeInForm(index, file);
                         }}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
+                        className="block w-full text-xs sm:text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
                       />
-                      {banner.imageUrl && (
+                      {banner.imageUrl && banner.imageUrl.trim() !== "" && (
                         <div className="mt-2">
                           <Image 
                             src={banner.imageUrl} 
                             alt={`Banner ${index + 1} Preview`} 
-                            className="h-32 w-64 object-cover rounded" 
+                            className="h-32 w-full sm:w-64 object-cover rounded" 
                             width={256} 
                             height={128} 
                           />
@@ -727,17 +729,17 @@ const HomePage = () => {
 
               {/* Featured Sections */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-lg font-semibold">Featured Sections</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addFeaturedSection}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <Label className="text-base sm:text-lg font-semibold">Featured Sections</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addFeaturedSection} className="w-full sm:w-auto">
                     + Add Section
                   </Button>
                 </div>
                 {form.featuredSections.map((section, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <Label>Section {index + 1}</Label>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeFeaturedSection(index)}>
+                  <div key={index} className="border rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <Label className="text-sm sm:text-base">Section {index + 1}</Label>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeFeaturedSection(index)} className="w-full sm:w-auto">
                         Remove
                       </Button>
                     </div>
@@ -764,15 +766,15 @@ const HomePage = () => {
                 ))}
               </div>
 
-              <DialogFooter>
-                <Button type="submit" disabled={!!(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId))}>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button type="submit" className="w-full sm:w-auto" disabled={!!(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId))}>
                   {(loading || actionLoadingId === "add" || (editId && actionLoadingId === editId)) ? (
                     <Loader className="animate-spin mr-2" size={18} />
                   ) : null}
                   {editId ? "Update" : "Add"}
                 </Button>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={() => { resetForm(); }}>Cancel</Button>
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => { resetForm(); }}>Cancel</Button>
                 </DialogClose>
               </DialogFooter>
             </form>
@@ -783,13 +785,13 @@ const HomePage = () => {
       {error && <div className="text-red-500 mb-4">{error}</div>}
       
       {/* Banners List */}
-      <div className="bg-white rounded shadow p-4 mb-6">
-        <h2 className="text-xl font-bold mb-4">Banners</h2>
+      <div className="bg-white rounded shadow p-3 sm:p-4 mb-6">
+        <h2 className="text-lg sm:text-xl font-bold mb-4">Banners</h2>
         {banners && banners.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {banners.map((banner: Banner, index: number) => (
-              <div key={banner._id || index} className="border rounded-lg p-4 space-y-3">
-                {banner.imageUrl && (
+              <div key={banner._id || index} className="border rounded-lg p-3 sm:p-4 space-y-3">
+                {banner.imageUrl && banner.imageUrl.trim() !== "" && (
                   <Image 
                     src={banner.imageUrl} 
                     alt={banner.title || "Banner"} 
@@ -799,15 +801,16 @@ const HomePage = () => {
                   />
                 )}
                 <div>
-                  <p className="font-medium">{banner.title || "Untitled"}</p>
-                  <p className="text-sm text-gray-600">{banner.description || "-"}</p>
+                  <p className="font-medium text-sm sm:text-base">{banner.title || "Untitled"}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{banner.description || "-"}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
                     size="sm" 
                     variant="outline" 
                     onClick={() => handleEditBanner(banner)}
                     disabled={actionLoadingId === banner._id}
+                    className="w-full sm:w-auto"
                   >
                     {actionLoadingId === banner._id && editBannerId === banner._id ? (
                       <Loader className="animate-spin mr-2" size={16} />
@@ -819,6 +822,7 @@ const HomePage = () => {
                     variant="destructive" 
                     onClick={() => handleDeleteBanner(banner._id!)}
                     disabled={actionLoadingId === banner._id}
+                    className="w-full sm:w-auto"
                   >
                     {actionLoadingId === banner._id ? (
                       <Loader className="animate-spin mr-2" size={16} />
@@ -837,20 +841,20 @@ const HomePage = () => {
       </div>
       
       {/* Sections List */}
-      <div className="bg-white rounded shadow p-4 mb-6">
-        <h2 className="text-xl font-bold mb-4">Sections</h2>
+      <div className="bg-white rounded shadow p-3 sm:p-4 mb-6">
+        <h2 className="text-lg sm:text-xl font-bold mb-4">Sections</h2>
         {sections && sections.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {sections.map((section: FeaturedCategory, index: number) => {
               // Check if products are objects or IDs
               const productsArray = Array.isArray(section.products) ? section.products : [];
               const hasProductObjects = productsArray.length > 0 && typeof productsArray[0] === 'object' && productsArray[0] !== null;
               
               return (
-                <div key={section._id || index} className="border rounded-lg p-4 space-y-3">
+                <div key={section._id || index} className="border rounded-lg p-3 sm:p-4 space-y-3">
                   <div>
-                    <p className="font-medium">{section.title || "Untitled"}</p>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="font-medium text-sm sm:text-base">{section.title || "Untitled"}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2">
                       Products: {productsArray.length}
                     </p>
                     {hasProductObjects && productsArray.length > 0 && (
@@ -859,19 +863,19 @@ const HomePage = () => {
                           const productObj = product as ProductObject;
                           return (
                             <div key={productObj._id || pIdx} className="flex gap-2 items-center border rounded p-2">
-                              {productObj.imageUrl && (
+                              {productObj.imageUrl && typeof productObj.imageUrl === "string" && productObj.imageUrl.trim() !== "" && (
                                 <Image
                                   src={productObj.imageUrl}
                                   alt={productObj.name || "Product"}
-                                  className="h-12 w-12 object-cover rounded"
+                                  className="h-10 w-10 sm:h-12 sm:w-12 object-cover rounded flex-shrink-0"
                                   width={48}
                                   height={48}
                                 />
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{productObj.name || "Unknown"}</p>
+                                <p className="text-xs sm:text-sm font-medium truncate">{productObj.name || "Unknown"}</p>
                                 {productObj.category && (
-                                  <p className="text-xs text-gray-500">{productObj.category}</p>
+                                  <p className="text-xs text-gray-500 truncate">{productObj.category}</p>
                                 )}
                               </div>
                             </div>
@@ -883,12 +887,13 @@ const HomePage = () => {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button 
                       size="sm" 
                       variant="outline" 
                       onClick={() => handleEditSection(section)}
                       disabled={actionLoadingId === section._id}
+                      className="w-full sm:w-auto"
                     >
                       {actionLoadingId === section._id && editSectionId === section._id ? (
                         <Loader className="animate-spin mr-2" size={16} />
@@ -900,6 +905,7 @@ const HomePage = () => {
                       variant="destructive" 
                       onClick={() => handleDeleteSection(section._id!)}
                       disabled={actionLoadingId === section._id}
+                      className="w-full sm:w-auto"
                     >
                       {actionLoadingId === section._id ? (
                         <Loader className="animate-spin mr-2" size={16} />
@@ -919,28 +925,28 @@ const HomePage = () => {
       </div>
       
       {/* Home Entries */}
-      <div className="bg-white rounded shadow p-4">
+      <div className="bg-white rounded shadow p-3 sm:p-4">
         {homes && homes.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {homes.map((home: Home) => (
-              <div key={home._id} className="border rounded-lg p-4 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold">Home Entry</h3>
+              <div key={home._id} className="border rounded-lg p-3 sm:p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-base sm:text-lg font-semibold">Home Entry</h3>
                     {home.createdAt && (
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs sm:text-sm text-gray-500">
                         Created: {new Date(home.createdAt).toLocaleDateString()}
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(home)} disabled={actionLoadingId === home._id}>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(home)} disabled={actionLoadingId === home._id} className="w-full sm:w-auto">
                       {actionLoadingId === home._id && editId === home._id ? (
                         <Loader className="animate-spin mr-2" size={16} />
                       ) : null}
                       Edit
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(home._id!)} disabled={actionLoadingId === home._id}>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(home._id!)} disabled={actionLoadingId === home._id} className="w-full sm:w-auto">
                       {actionLoadingId === home._id ? (
                         <Loader className="animate-spin mr-2" size={16} />
                       ) : null}
@@ -951,23 +957,23 @@ const HomePage = () => {
                 
                 {/* Banners Display */}
                 <div>
-                  <h4 className="font-medium mb-2">Banners ({Array.isArray(home.banners) ? home.banners.length : 0})</h4>
+                  <h4 className="font-medium text-sm sm:text-base mb-2">Banners ({Array.isArray(home.banners) ? home.banners.length : 0})</h4>
                   {Array.isArray(home.banners) && home.banners.length > 0 ? (
                     <div className="space-y-3">
                       {home.banners.map((banner: Banner, idx: number) => (
-                        <div key={idx} className="flex gap-4 border rounded p-3">
-                          {banner.imageUrl && (
+                        <div key={idx} className="flex flex-col sm:flex-row gap-3 border rounded p-3">
+                          {banner.imageUrl && banner.imageUrl.trim() !== "" && (
                             <Image 
                               src={banner.imageUrl} 
                               alt={banner.title || `Banner ${idx + 1}`} 
-                              className="h-20 w-32 object-cover rounded" 
+                              className="h-20 w-full sm:w-32 object-cover rounded flex-shrink-0" 
                               width={128} 
                               height={80} 
                             />
                           )}
-                          <div className="flex-1">
-                            <p className="font-medium">{banner.title || `Banner ${idx + 1}`}</p>
-                            <p className="text-sm text-gray-600">{banner.description || "-"}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base">{banner.title || `Banner ${idx + 1}`}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 break-words">{banner.description || "-"}</p>
                           </div>
                         </div>
                       ))}
@@ -979,38 +985,38 @@ const HomePage = () => {
 
                 {/* Featured Sections Display */}
                 <div>
-                  <h4 className="font-medium mb-2">Featured Sections ({Array.isArray(home.featuredSections) ? home.featuredSections.length : 0})</h4>
+                  <h4 className="font-medium text-sm sm:text-base mb-2">Featured Sections ({Array.isArray(home.featuredSections) ? home.featuredSections.length : 0})</h4>
                   {Array.isArray(home.featuredSections) && home.featuredSections.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {home.featuredSections.map((section: FeaturedCategory, idx: number) => {
                         const productsArray = Array.isArray(section.products) ? section.products : [];
                         const hasProductObjects = productsArray.length > 0 && typeof productsArray[0] === 'object' && productsArray[0] !== null;
                         
                         return (
-                          <div key={idx} className="border rounded p-4 space-y-3">
-                            <p className="font-medium text-lg">{section.title || `Section ${idx + 1}`}</p>
-                            <p className="text-sm text-gray-600">
+                          <div key={idx} className="border rounded p-3 sm:p-4 space-y-3">
+                            <p className="font-medium text-base sm:text-lg">{section.title || `Section ${idx + 1}`}</p>
+                            <p className="text-xs sm:text-sm text-gray-600">
                               {productsArray.length} product(s)
                             </p>
                             {hasProductObjects && productsArray.length > 0 ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                                 {productsArray.map((product, pIdx: number) => {
                                   const productObj = product as ProductObject;
                                   return (
-                                    <div key={productObj._id || pIdx} className="border rounded-lg p-3 flex gap-3">
-                                      {productObj.imageUrl && (
+                                    <div key={productObj._id || pIdx} className="border rounded-lg p-2 sm:p-3 flex gap-2 sm:gap-3">
+                                      {productObj.imageUrl && typeof productObj.imageUrl === "string" && productObj.imageUrl.trim() !== "" && (
                                         <Image
                                           src={productObj.imageUrl}
                                           alt={productObj.name || "Product"}
-                                          className="h-16 w-16 object-cover rounded"
+                                          className="h-12 w-12 sm:h-16 sm:w-16 object-cover rounded flex-shrink-0"
                                           width={64}
                                           height={64}
                                         />
                                       )}
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-sm">{productObj.name || "Unknown Product"}</p>
+                                        <p className="font-medium text-xs sm:text-sm truncate">{productObj.name || "Unknown Product"}</p>
                                         {productObj.category && (
-                                          <p className="text-xs text-gray-500">{productObj.category}</p>
+                                          <p className="text-xs text-gray-500 truncate">{productObj.category}</p>
                                         )}
                                         {productObj.price && Array.isArray(productObj.price) && productObj.price.length > 0 && (
                                           <p className="text-xs text-gray-600 mt-1">
@@ -1023,7 +1029,7 @@ const HomePage = () => {
                                 })}
                               </div>
                             ) : (
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-gray-500 mt-1 break-words">
                                 Product IDs: {productsArray.join(', ')}
                               </p>
                             )}

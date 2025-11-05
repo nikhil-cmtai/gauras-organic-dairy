@@ -21,7 +21,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import type { AppDispatch } from "@/lib/store";
 import { Loader, Loader2, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,19 +29,14 @@ import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import type { Product } from "@/lib/redux/productSlice";
 
-// Static categories matching Product interface
-const CATEGORIES = ["Milk", "Butter", "Cheese", "Yogurt", "Ghee"] as const;
-type CategoryType = typeof CATEGORIES[number];
-
 type ProductForm = {
   name: string;
-  category: CategoryType | "";
+  category: string;
   price: string[]; // Array of price strings
   dailyPrice: string[];
   alternatePrice: string[];
   weeklyPrice: string[];
   description: string[];
-  stock: string;
   quantity: string[]; // Array of quantity strings
   imageUrl: (File | string)[]; // Array of images (up to 5)
 };
@@ -55,7 +49,6 @@ const emptyForm: ProductForm = {
   alternatePrice: [""],
   weeklyPrice: [""],
   description: [""],
-  stock: "",
   quantity: [""],
   imageUrl: []
 };
@@ -147,8 +140,6 @@ const ProductsPage = () => {
     form.description.forEach(d => formData.append("description", d || ""));
     form.quantity.forEach(q => formData.append("quantity", q || ""));
     
-    formData.append("stock", form.stock || "0");
-    
     // Append multiple images
     form.imageUrl.forEach((img) => {
       if (img instanceof File) {
@@ -196,7 +187,6 @@ const ProductsPage = () => {
       alternatePrice: prod.alternatePrice && prod.alternatePrice.length > 0 ? prod.alternatePrice.map(p => p.toString()) : [""],
       weeklyPrice: prod.weeklyPrice && prod.weeklyPrice.length > 0 ? prod.weeklyPrice.map(p => p.toString()) : [""],
       description: prod.description && prod.description.length > 0 ? prod.description : [""],
-      stock: prod.stock?.toString() || "",
       quantity: prod.quantity && prod.quantity.length > 0 ? prod.quantity : [""],
       imageUrl: imageUrls,
     });
@@ -220,8 +210,6 @@ const ProductsPage = () => {
       form.weeklyPrice.forEach(p => formData.append("weeklyPrice", p || "0"));
       form.description.forEach(d => formData.append("description", d || ""));
       form.quantity.forEach(q => formData.append("quantity", q || ""));
-      
-      formData.append("stock", form.stock || "0");
       
       // For images: only send new Files, keep existing string URLs as-is
       // Existing images (strings) that are still in the form will be preserved
@@ -320,122 +308,104 @@ const ProductsPage = () => {
                 
                 <div>
                   <Label htmlFor="category" className="mb-2">Category</Label>
-                  <Select
+                  <Input
+                    id="category"
+                    name="category"
+                    placeholder="Category"
                     value={form.category}
-                    onValueChange={val => setForm({ ...form, category: val as CategoryType })}
+                    onChange={handleInput}
                     required
-                  >
-                    <SelectTrigger id="category" className="w-full">
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
-              </div>
-
-              <div>
-                <Label className="mb-2">Price</Label>
-                {form.price.map((price, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      type="number"
-                      placeholder="Price"
-                      value={price}
-                      onChange={(e) => handleArrayInput('price', index, e.target.value)}
-                    />
-                    {form.price.length > 1 && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('price', index)}>
-                        <X size={14} />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('price')}>
-                  + Add Price
-                </Button>
-              </div>
-
-              <div>
-                <Label className="mb-2">Daily Price (Optional)</Label>
-                {form.dailyPrice.map((price, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      type="number"
-                      placeholder="Daily Price"
-                      value={price}
-                      onChange={(e) => handleArrayInput('dailyPrice', index, e.target.value)}
-                    />
-                    {form.dailyPrice.length > 1 && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('dailyPrice', index)}>
-                        <X size={14} />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('dailyPrice')}>
-                  + Add Daily Price
-                </Button>
-              </div>
-
-              <div>
-                <Label className="mb-2">Alternate Price (Optional)</Label>
-                {form.alternatePrice.map((price, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      type="number"
-                      placeholder="Alternate Price"
-                      value={price}
-                      onChange={(e) => handleArrayInput('alternatePrice', index, e.target.value)}
-                    />
-                    {form.alternatePrice.length > 1 && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('alternatePrice', index)}>
-                        <X size={14} />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('alternatePrice')}>
-                  + Add Alternate Price
-                </Button>
-              </div>
-
-              <div>
-                <Label className="mb-2">Weekly Price (Optional)</Label>
-                {form.weeklyPrice.map((price, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      type="number"
-                      placeholder="Weekly Price"
-                      value={price}
-                      onChange={(e) => handleArrayInput('weeklyPrice', index, e.target.value)}
-                    />
-                    {form.weeklyPrice.length > 1 && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('weeklyPrice', index)}>
-                        <X size={14} />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('weeklyPrice')}>
-                  + Add Weekly Price
-                </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="stock" className="mb-2">Stock</Label>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    placeholder="Stock Quantity"
-                    value={form.stock}
-                    onChange={handleInput}
-                  />
+                  <Label className="mb-2">Price</Label>
+                  {form.price.map((price, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        type="number"
+                        placeholder="Price"
+                        value={price}
+                        onChange={(e) => handleArrayInput('price', index, e.target.value)}
+                      />
+                      {form.price.length > 1 && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('price', index)}>
+                          <X size={14} />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('price')}>
+                    + Add Price
+                  </Button>
+                </div>
+
+                <div>
+                  <Label className="mb-2">Daily Price (Optional)</Label>
+                  {form.dailyPrice.map((price, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        type="number"
+                        placeholder="Daily Price"
+                        value={price}
+                        onChange={(e) => handleArrayInput('dailyPrice', index, e.target.value)}
+                      />
+                      {form.dailyPrice.length > 1 && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('dailyPrice', index)}>
+                          <X size={14} />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('dailyPrice')}>
+                    + Add Daily Price
+                  </Button>
+                </div>
+
+                <div>
+                  <Label className="mb-2">Alternate Price (Optional)</Label>
+                  {form.alternatePrice.map((price, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        type="number"
+                        placeholder="Alternate Price"
+                        value={price}
+                        onChange={(e) => handleArrayInput('alternatePrice', index, e.target.value)}
+                      />
+                      {form.alternatePrice.length > 1 && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('alternatePrice', index)}>
+                          <X size={14} />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('alternatePrice')}>
+                    + Add Alternate Price
+                  </Button>
+                </div>
+
+                <div>
+                  <Label className="mb-2">Weekly Price (Optional)</Label>
+                  {form.weeklyPrice.map((price, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input
+                        type="number"
+                        placeholder="Weekly Price"
+                        value={price}
+                        onChange={(e) => handleArrayInput('weeklyPrice', index, e.target.value)}
+                      />
+                      {form.weeklyPrice.length > 1 && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeArrayItem('weeklyPrice', index)}>
+                          <X size={14} />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem('weeklyPrice')}>
+                    + Add Weekly Price
+                  </Button>
                 </div>
               </div>
 
@@ -498,24 +468,28 @@ const ProductsPage = () => {
                 )}
                 {form.imageUrl.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {form.imageUrl.map((img, index) => (
-                      <div key={index} className="relative inline-block">
-                        <Image 
-                          src={imagePreviews[index] || (typeof img === "string" ? img : "")} 
-                          alt={`Preview ${index + 1}`} 
-                          width={150} 
-                          height={150} 
-                          className="h-32 w-full object-cover rounded border-2 border-gray-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                    {form.imageUrl.map((img, index) => {
+                      const imageSrc = imagePreviews[index] || (typeof img === "string" ? img : "");
+                      if (!imageSrc) return null;
+                      return (
+                        <div key={index} className="relative inline-block">
+                          <Image 
+                            src={imageSrc} 
+                            alt={`Preview ${index + 1}`} 
+                            width={150} 
+                            height={150} 
+                            className="h-32 w-full object-cover rounded border-2 border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -562,7 +536,6 @@ const ProductsPage = () => {
                   <th className="py-3 px-4 text-left">Name</th>
                   <th className="py-3 px-4 text-left">Category</th>
                   <th className="py-3 px-4 text-left">Price</th>
-                  <th className="py-3 px-4 text-left">Stock</th>
                   <th className="py-3 px-4 text-left">Quantity</th>
                   <th className="py-3 px-4 text-left">Image</th>
                   <th className="py-3 px-4 text-left">Actions</th>
@@ -585,14 +558,13 @@ const ProductsPage = () => {
                           </div>
                         ) : "-"}
                       </td>
-                      <td className="py-3 px-4">{prod.stock ?? "-"}</td>
                       <td className="py-3 px-4">
                         {prod.quantity && prod.quantity.length > 0 ? (
                           <div className="text-sm">{prod.quantity.join(", ")}</div>
                         ) : "-"}
                       </td>
                       <td className="py-3 px-4">
-                        {prod.imageUrl ? (
+                        {prod.imageUrl && typeof prod.imageUrl === "string" && prod.imageUrl.trim() !== "" ? (
                           <Image 
                             src={prod.imageUrl} 
                             alt={prod.name} 
@@ -622,7 +594,7 @@ const ProductsPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="text-center py-4 text-muted-foreground">
+                    <td colSpan={6} className="text-center py-4 text-muted-foreground">
                       No products found.
                     </td>
                   </tr>
