@@ -142,27 +142,6 @@ const SubscriptionsPage = () => {
                   }}
                   className="space-y-4"
                 >
-                  <div>
-                    <Label htmlFor="status" className="mb-2">
-                      Status
-                    </Label>
-                    <Select
-                      value={editModalData.status}
-                      onValueChange={(value) =>
-                        handleModalChange("status", value)
-                      }
-                      required
-                    >
-                      <SelectTrigger id="status">
-                        <SelectValue placeholder="Select Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Expired">Expired</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
                   <div>
                     <Label htmlFor="deliveryBoyId" className="mb-2">
@@ -174,14 +153,19 @@ const SubscriptionsPage = () => {
                         handleModalChange("deliveryBoyId", value)
                       }
                     >
-                      <SelectTrigger id="deliveryBoyId">
+                      <SelectTrigger id="deliveryBoyId" className="w-full">
                         <SelectValue placeholder="Select Delivery Partner" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {deliveryPartners.map((partner: User) => (
                           <SelectItem key={partner._id} value={partner._id!}>
-                            {partner.name} ({partner.phone})
+                            {partner.name}{" "}
+                            {partner.phone
+                              ? `(${partner.phone})`
+                              : partner.email
+                              ? `(${partner.email})`
+                              : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -187,6 +187,26 @@ export const deleteOrder = (id: string) => async (dispatch: Dispatch) => {
   }
 };
 
+// Assign a delivery partner to an order
+export const assignDeliveryPartner = (payload: Record<string, unknown>) => async (dispatch: Dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const response = await apiClient.post(`/orders/assign-delivery-boy`, payload);
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      dispatch(setError(response.data?.message || "Failed to assign delivery partner"));
+    }
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? (error as { message?: string }).message
+        : String(error);
+    dispatch(setError(message || "Unknown error"));
+  }
+  dispatch(setLoading(false));
+};
+
 // Selectors
 export const selectOrders = (state: RootState) => state.orders.orders;
 export const selectOrderById = (state: RootState) => state.orders.selectedOrder;

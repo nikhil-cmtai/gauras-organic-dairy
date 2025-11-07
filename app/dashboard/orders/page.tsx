@@ -9,6 +9,8 @@ import {
   selectOrderLoading,
   selectOrderError,
 } from "@/lib/redux/orderSlice";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { selectUsers, fetchUsers } from "@/lib/redux/userSlice";
 import { Button } from "@/components/ui/button";
 import { Loader, Loader2 } from "lucide-react";
@@ -25,23 +27,36 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 // import { useRouter } from 'next/navigation';
+import { assignDeliveryPartner } from "@/lib/redux/orderSlice";
 
 type OrderEditData = {
   status: OrderStatus;
 };
 
+type OrderAssignData = {
+  deliveryBoyId: string;
+};
+
 const OrdersPage = () => {
   // const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  
+
   const orders = useSelector(selectOrders);
   const loading = useSelector(selectOrderLoading);
   const error = useSelector(selectOrderError);
   const users = useSelector(selectUsers);
 
+  // Filter delivery partners
+  const deliveryPartners = users.filter(
+    (user: User) => user.role === "delivery" || user.role === "deliveryBoy"
+  );
+
   const [editOrder, setEditOrder] = useState<Order | null>(null);
+  const [assignOrder, setAssignOrder] = useState<Order | null>(null);
   const [editModalData, setEditModalData] = useState<OrderEditData>({ status: OrderStatus.Pending });
+  const [assignModalData, setAssignModalData] = useState<OrderAssignData>({ deliveryBoyId: "none" });
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,15 +72,27 @@ const OrdersPage = () => {
     setEditModalOpen(true);
   };
 
-  const handleModalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const openAssignModal = (order: Order) => {
+    setAssignOrder(order);
+    setAssignModalData({
+      deliveryBoyId: order.deliveryBoy || "none",
+    });
+    setAssignModalOpen(true);
+  };
+
+  const handleEditModalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target;
     setEditModalData({ status: value as OrderStatus });
   };
 
-  const handleModalSave = async () => {
+  const handleAssignModalChange = (value: string) => {
+    setAssignModalData({ deliveryBoyId: value });
+  };
+
+  const handleEditModalSave = async () => {
     if (!editOrder || !editOrder._id) return;
     setActionLoadingId(editOrder._id);
-    
+
     const payload: Record<string, unknown> = {
       status: editModalData.status,
     };
@@ -77,9 +104,24 @@ const OrdersPage = () => {
     setEditOrder(null);
     setEditModalOpen(false);
     setActionLoadingId(null);
+  };
 
-    // Note: WhatsApp functionality would require user phone number from user data
-    // This would need to fetch user details using order.user (user ID)
+  const handleAssignModalSave = async () => {
+    if (!assignOrder || !assignOrder._id) return;
+    setActionLoadingId(assignOrder._id);
+
+    const payload: Record<string, unknown> = {
+      orderId: assignOrder._id,
+      deliveryBoyId: assignModalData.deliveryBoyId === "none" ? undefined : assignModalData.deliveryBoyId,
+    };
+
+    await dispatch(assignDeliveryPartner(payload));
+    dispatch(fetchOrders());
+
+    // Close modal
+    setAssignOrder(null);
+    setAssignModalOpen(false);
+    setActionLoadingId(null);
   };
 
   // const handleViewInvoice = (order: Order) => {
@@ -101,24 +143,26 @@ const OrdersPage = () => {
           </div>
         ) : (
           <>
+            {/* Edit Order Modal */}
             <Dialog open={editModalOpen} onOpenChange={open => setEditModalOpen(!!open)}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Edit Order</DialogTitle>
+                  <DialogTitle>Edit Order Status</DialogTitle>
                 </DialogHeader>
                 <form
                   onSubmit={e => {
                     e.preventDefault();
-                    handleModalSave();
+                    handleEditModalSave();
                   }}
                   className="space-y-4"
                 >
                   <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
+                    <Label htmlFor="status" className="mb-2">Status</Label>
                     <select
+                      id="status"
                       name="status"
                       value={editModalData.status}
-                      onChange={handleModalChange}
+                      onChange={handleEditModalChange}
                       className="w-full border rounded px-2 py-2"
                       required
                     >
@@ -140,6 +184,67 @@ const OrdersPage = () => {
                     </Button>
                     <DialogClose asChild>
                       <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Assign Delivery Partner Modal */}
+            <Dialog open={assignModalOpen} onOpenChange={open => setAssignModalOpen(!!open)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assign Delivery Partner</DialogTitle>
+                </DialogHeader>
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    handleAssignModalSave();
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <Label htmlFor="deliveryBoyId" className="mb-2">
+                      Delivery Partner
+                    </Label>
+                    <Select
+                      value={assignModalData.deliveryBoyId}
+                      onValueChange={handleAssignModalChange}
+                    >
+                      <SelectTrigger id="deliveryBoyId" className="w-full">
+                        <SelectValue placeholder="Select Delivery Partner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {deliveryPartners && deliveryPartners.length > 0 ? (
+                          deliveryPartners.map((partner: User) => (
+                            <SelectItem key={partner._id} value={partner._id!}>
+                              {partner.name}{" "}
+                              {partner.phone
+                                ? `(${partner.phone})`
+                                : partner.email
+                                  ? `(${partner.email})`
+                                  : ""}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>No delivery partners available</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      disabled={Boolean(actionLoadingId && assignOrder && actionLoadingId === assignOrder._id)}
+                    >
+                      {actionLoadingId && assignOrder && actionLoadingId === assignOrder._id ? (
+                        <Loader className="animate-spin mr-2" size={18} />
+                      ) : null}
+                      Assign
+                    </Button>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline" onClick={() => setAssignModalOpen(false)}>Cancel</Button>
                     </DialogClose>
                   </DialogFooter>
                 </form>
@@ -195,12 +300,11 @@ const OrdersPage = () => {
                           )}
                         </td>
                         <td className="py-2 px-4">
-                          <span className={`capitalize px-2 py-1 rounded text-xs ${
-                            order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                            order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                            order.status === 'Accepted' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`capitalize px-2 py-1 rounded text-xs ${order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                              order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                order.status === 'Accepted' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                            }`}>
                             {order.status}
                           </span>
                         </td>
@@ -208,6 +312,9 @@ const OrdersPage = () => {
                           <div className="flex gap-2">
                             <Button size="sm" variant="outline" onClick={() => openEditModal(order)}>
                               Edit
+                            </Button>
+                            <Button size="sm" variant="default" onClick={() => openAssignModal(order)}>
+                              Assign
                             </Button>
                             {/* <Button size="sm" variant="default" onClick={() => handleViewInvoice(order)}>
                               Invoice
