@@ -4,12 +4,14 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchHomes,
+  addHome,
   addBanner,
   updateBanner,
   deleteBanner,
   addSection,
   updateSection,
   deleteSection,
+  selectHomes,
   selectBanners,
   selectSections,
   selectLoading,
@@ -48,6 +50,7 @@ type ProductObject = {
 
 const HomePage = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const homes = useSelector(selectHomes);
   const banners = useSelector(selectBanners);
   const sections = useSelector(selectSections);
   const products = useSelector(selectProducts);
@@ -55,6 +58,11 @@ const HomePage = () => {
   const error = useSelector(selectError);
 
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [homeDialogOpen, setHomeDialogOpen] = useState(false);
+  const [homeForm, setHomeForm] = useState<{
+    urlLivelink: string;
+  }>({ urlLivelink: "" });
+  const [isEditingHome, setIsEditingHome] = useState(false);
   
   // Banner management state
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
@@ -78,6 +86,16 @@ const HomePage = () => {
     dispatch(fetchHomes());
     dispatch(fetchProducts());
   }, [dispatch]);
+
+  // Load home data when homes are fetched
+  useEffect(() => {
+    if (homes && homes.length > 0) {
+      const firstHome = homes[0];
+      const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
+      setHomeForm({ urlLivelink });
+      setIsEditingHome(!!firstHome._id);
+    }
+  }, [homes]);
 
 
   // Banner management handlers
@@ -263,6 +281,35 @@ const HomePage = () => {
     }
   };
 
+  // Home management handlers
+  const handleHomeSave = async () => {
+    setActionLoadingId("home");
+
+    const payload: { urlLivelink?: string } = {
+      urlLivelink: homeForm.urlLivelink || undefined,
+    };
+
+    // Har vaar add ke hit hoge (Always hit "addHome", never update)
+    await dispatch(addHome(payload));
+
+    dispatch(fetchHomes());
+    setHomeDialogOpen(false);
+    setActionLoadingId(null);
+  };
+
+  const openHomeDialog = () => {
+    if (homes && homes.length > 0) {
+      const firstHome = homes[0];
+      const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
+      setHomeForm({ urlLivelink });
+      setIsEditingHome(!!firstHome._id);
+    } else {
+      setHomeForm({ urlLivelink: "" });
+      setIsEditingHome(false);
+    }
+    setHomeDialogOpen(true);
+  };
+
   return (
     <div className="w-full mx-auto px-2 sm:px-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -439,6 +486,93 @@ const HomePage = () => {
         </div>
       </div>
       {error && <div className="text-red-500 mb-4">{error}</div>}
+
+      {/* Live Link Display Section */}
+      <div className="bg-white rounded shadow p-3 sm:p-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
+            <h2 className="text-lg sm:text-xl font-bold mb-2">Live Link</h2>
+            {homes && homes.length > 0 && (homes[0] as { urlLivelink?: string })?.urlLivelink ? (
+              <p className="text-sm sm:text-base text-gray-600 break-words">
+                {(homes[0] as { urlLivelink?: string }).urlLivelink}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">No live link set</p>
+            )}
+          </div>
+          <Button variant="outline" onClick={openHomeDialog}>
+            {homes && homes.length > 0 && (homes[0] as { urlLivelink?: string })?.urlLivelink ? "Edit" : "Add"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Home Management Dialog */}
+      <Dialog open={homeDialogOpen} onOpenChange={(open) => {
+        setHomeDialogOpen(open);
+        if (!open) {
+          if (homes && homes.length > 0) {
+            const firstHome = homes[0];
+            const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
+            setHomeForm({ urlLivelink });
+          } else {
+            setHomeForm({ urlLivelink: "" });
+          }
+        }
+      }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl">
+              {isEditingHome ? "Edit Live Link" : "Add Live Link"}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              handleHomeSave();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="urlLivelink" className="mb-2">
+                Live Link URL
+              </Label>
+              <Input
+                id="urlLivelink"
+                name="urlLivelink"
+                type="url"
+                placeholder="https://example.com"
+                value={homeForm.urlLivelink || ""}
+                onChange={e => setHomeForm({ ...homeForm, urlLivelink: e.target.value })}
+              />
+            </div>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={!!(loading || actionLoadingId === "home")}
+              >
+                {(loading || actionLoadingId === "home") && (
+                  <Loader className="animate-spin mr-2" size={18} />
+                )}
+                {isEditingHome ? "Update" : "Add"}
+              </Button>
+              <DialogClose asChild>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => {
+                  if (homes && homes.length > 0) {
+                    const firstHome = homes[0];
+                    const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
+                    setHomeForm({ urlLivelink });
+                  } else {
+                    setHomeForm({ urlLivelink: "" });
+                  }
+                }}>
+                  Cancel
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       
       {/* Banners List */}
       <div className="bg-white rounded shadow p-3 sm:p-4 mb-6">

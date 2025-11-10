@@ -145,17 +145,9 @@ export const addHome = (home: Partial<Home> | FormData) => async (
 ) => {
   dispatch(setLoading(true));
   try {
-    let config = {};
-    const payload = home;
-    if (typeof FormData !== "undefined" && home instanceof FormData) {
-      config = { headers: { "Content-Type": "multipart/form-data" } };
-    } else {
-      config = { headers: { "Content-Type": "application/json" } };
-    }
     const response = await apiClient.post(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/home`,
-      payload,
-      config
+      home,
     );
     if (response.status === 201 || response.status === 200) {
       return response.data;
