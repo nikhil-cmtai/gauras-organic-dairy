@@ -60,8 +60,8 @@ const HomePage = () => {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [homeDialogOpen, setHomeDialogOpen] = useState(false);
   const [homeForm, setHomeForm] = useState<{
-    urlLivelink: string;
-  }>({ urlLivelink: "" });
+    urlLiveLink: string;
+  }>({ urlLiveLink: "" });
   const [isEditingHome, setIsEditingHome] = useState(false);
   
   // Banner management state
@@ -91,8 +91,8 @@ const HomePage = () => {
   useEffect(() => {
     if (homes && homes.length > 0) {
       const firstHome = homes[0];
-      const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
-      setHomeForm({ urlLivelink });
+      const urlLiveLink = (firstHome as { urlLiveLink?: string })?.urlLiveLink || "";
+      setHomeForm({ urlLiveLink });
       setIsEditingHome(!!firstHome._id);
     }
   }, [homes]);
@@ -285,8 +285,8 @@ const HomePage = () => {
   const handleHomeSave = async () => {
     setActionLoadingId("home");
 
-    const payload: { urlLivelink?: string } = {
-      urlLivelink: homeForm.urlLivelink || undefined,
+    const payload: { urlLiveLink?: string } = {
+      urlLiveLink: homeForm.urlLiveLink || undefined,
     };
 
     // Har vaar add ke hit hoge (Always hit "addHome", never update)
@@ -300,11 +300,11 @@ const HomePage = () => {
   const openHomeDialog = () => {
     if (homes && homes.length > 0) {
       const firstHome = homes[0];
-      const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
-      setHomeForm({ urlLivelink });
+      const urlLiveLink = (firstHome as { urlLiveLink?: string })?.urlLiveLink || "";
+      setHomeForm({ urlLiveLink });
       setIsEditingHome(!!firstHome._id);
     } else {
-      setHomeForm({ urlLivelink: "" });
+      setHomeForm({ urlLiveLink: "" });
       setIsEditingHome(false);
     }
     setHomeDialogOpen(true);
@@ -492,16 +492,16 @@ const HomePage = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">
             <h2 className="text-lg sm:text-xl font-bold mb-2">Live Link</h2>
-            {homes && homes.length > 0 && (homes[0] as { urlLivelink?: string })?.urlLivelink ? (
+            {homes && homes.length > 0 && (homes[0] as { urlLiveLink?: string })?.urlLiveLink ? (
               <p className="text-sm sm:text-base text-gray-600 break-words">
-                {(homes[0] as { urlLivelink?: string }).urlLivelink}
+                {(homes[0] as { urlLiveLink?: string }).urlLiveLink}
               </p>
             ) : (
               <p className="text-sm text-gray-500">No live link set</p>
             )}
           </div>
           <Button variant="outline" onClick={openHomeDialog}>
-            {homes && homes.length > 0 && (homes[0] as { urlLivelink?: string })?.urlLivelink ? "Edit" : "Add"}
+            {homes && homes.length > 0 && (homes[0] as { urlLiveLink?: string })?.urlLiveLink ? "Edit" : "Add"}
           </Button>
         </div>
       </div>
@@ -512,10 +512,10 @@ const HomePage = () => {
         if (!open) {
           if (homes && homes.length > 0) {
             const firstHome = homes[0];
-            const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
-            setHomeForm({ urlLivelink });
+            const urlLiveLink = (firstHome as { urlLiveLink?: string })?.urlLiveLink || "";
+            setHomeForm({ urlLiveLink });
           } else {
-            setHomeForm({ urlLivelink: "" });
+            setHomeForm({ urlLiveLink: "" });
           }
         }
       }}>
@@ -533,16 +533,16 @@ const HomePage = () => {
             className="space-y-4"
           >
             <div>
-              <Label htmlFor="urlLivelink" className="mb-2">
+              <Label htmlFor="urlLiveLink" className="mb-2">
                 Live Link URL
               </Label>
               <Input
-                id="urlLivelink"
-                name="urlLivelink"
+                id="urlLiveLink"
+                name="urlLiveLink"
                 type="url"
                 placeholder="https://example.com"
-                value={homeForm.urlLivelink || ""}
-                onChange={e => setHomeForm({ ...homeForm, urlLivelink: e.target.value })}
+                value={homeForm.urlLiveLink || ""}
+                onChange={e => setHomeForm({ ...homeForm, urlLiveLink: e.target.value })}
               />
             </div>
             <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -560,10 +560,10 @@ const HomePage = () => {
                 <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => {
                   if (homes && homes.length > 0) {
                     const firstHome = homes[0];
-                    const urlLivelink = (firstHome as { urlLivelink?: string })?.urlLivelink || "";
-                    setHomeForm({ urlLivelink });
+                    const urlLiveLink = (firstHome as { urlLiveLink?: string })?.urlLiveLink || "";
+                    setHomeForm({ urlLiveLink });
                   } else {
-                    setHomeForm({ urlLivelink: "" });
+                    setHomeForm({ urlLiveLink: "" });
                   }
                 }}>
                   Cancel
